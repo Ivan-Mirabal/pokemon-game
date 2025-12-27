@@ -2,23 +2,28 @@ package com.pokemon.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import java.util.List;
 
 public class GameScreen implements Screen {
 
     final PokemonGame game;
 
     // Variables
-    private TiledMap mapa; //El mapa
-    private OrthogonalTiledMapRenderer renderer; // Renderizado para hacer el mapa
-    private String currentMapFile; // El mapa actual (para lo del cambio de escenario)
+    private TiledMap mapa;
+    private OrthogonalTiledMapRenderer renderer;
+    private String currentMapFile;
 
     // Cámara y Escalado
     private OrthographicCamera camara;
@@ -41,118 +46,120 @@ public class GameScreen implements Screen {
     // Límites de la cámara
     private float cameraMinX, cameraMaxX, cameraMinY, cameraMaxY;
 
+    // Variables para carga inicial
+    private String initialMap;
+    private float startX, startY;
+
+    // Cooldown para evitar transiciones infinitas
+    private float transitionCooldown = 0f;
+    private static final float TRANSITION_COOLDOWN_TIME = 0.3f;
+
+    // Variables para el Menú
+    private BitmapFont font;
+    private Texture whitePixel;
+
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY) {
         this.game = game;
-        this.currentMapFile = initialMap;
-        this.playerStartX = startX;
-        this.playerStartY = startY;
+        this.initialMap = initialMap;
+        this.startX = startX;
+        this.startY = startY;
     }
 
     @Override
     public void show() {
-        loadMap(currentMapFile, playerStartX, playerStartY);
+        loadMap(initialMap, startX, startY);
+
+        // Inicializar fuente
+        font = new BitmapFont();
+        font.setColor(Color.WHITE);
+        font.getData().setScale(0.8f);
+
+        // Crear textura blanca programáticamente
+        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        whitePixel = new Texture(pixmap);
+        pixmap.dispose();
     }
 
-    /**
-     * Carga un nuevo mapa y posiciona al jugador
-     */
     private void loadMap(String mapFile, float playerX, float playerY) {
-        // Limpiar recursos del mapa anterior
-        if (mapa != null) {
-            mapa.dispose();
-        }
-        if (renderer != null) {
-            renderer.dispose();
-        }
+        if (mapa != null) mapa.dispose();
+        if (renderer != null) renderer.dispose();
 
-        // Carga el nuevo mapa
         currentMapFile = mapFile;
         mapa = MapManager.loadMap(mapFile);
 
-        // Propiedades del mapa
         mapWidth = mapa.getProperties().get("width", Integer.class);
         mapHeight = mapa.getProperties().get("height", Integer.class);
         tileWidth = mapa.getProperties().get("tilewidth", Integer.class);
         tileHeight = mapa.getProperties().get("tileheight", Integer.class);
 
-        // Calcular dimensiones del mundo
         worldWidthPx = mapWidth * tileWidth;
         worldHeightPx = mapHeight * tileHeight;
 
-        // Inicializar el renderizador
         renderer = new OrthogonalTiledMapRenderer(mapa, 1f);
-
-        // Cargar la capa de colisiones
         collisionLayer = (TiledMapTileLayer) mapa.getLayers().get("Colisiones");
 
-        // Inicializar SpriteBatch
         if (spriteBatch == null) {
             spriteBatch = new SpriteBatch();
         }
 
-        // Crear o reposicionar al jugador
         if (player == null) {
             player = new Player("sprites/player.png", playerX, playerY, tileWidth, tileHeight, this);
         } else {
             player.x = playerX;
             player.y = playerY;
+            transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
 
-        // Configurar la cámara
         if (camara == null) {
             camara = new OrthographicCamera();
         }
+
         if (viewport == null) {
-            float viewportWidth = (Gdx.graphics.getWidth() / zoomScale);
-            float viewportHeight = (Gdx.graphics.getHeight() / zoomScale);
+            float viewportWidth = Gdx.graphics.getWidth() / zoomScale;
+            float viewportHeight = Gdx.graphics.getHeight() / zoomScale;
             viewport = new FitViewport(viewportWidth, viewportHeight, camara);
         }
 
-        // Calcular límites de la cámara
         calculateCameraBounds(viewport.getWorldWidth(), viewport.getWorldHeight());
-
-        // Centrar la cámara
         updateCamera();
-
-        Gdx.app.log("MapManager", "Mapa cargado: " + mapFile);
     }
 
-    /**
-     * Verifica si el jugador está intentando cambiar de mapa
-     */
     private void checkMapTransition() {
+        if (transitionCooldown > 0) return;
+
         MapManager.MapInfo currentMapInfo = MapManager.getMapInfo(currentMapFile);
         if (currentMapInfo == null) return;
 
-        float transitionMargin = 5; // Margen en píxeles para detectar transición
+        float margin = tileWidth * 0.5f;
+        float playerLeft = player.x - player.width/2;
+        float playerRight = player.x + player.width/2;
+        float playerBottom = player.y - player.height/2;
+        float playerTop = player.y + player.height/2;
 
-        // Transición pal norte
-        if (player.y >= worldHeightPx - transitionMargin && currentMapInfo.northMap != null) {
-            transitionToMap(currentMapInfo.northMap, player.x, transitionMargin);
+        if (playerTop >= worldHeightPx - margin && currentMapInfo.northMap != null) {
+            transitionToMap(currentMapInfo.northMap, player.x, tileHeight * 2);
+            transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
-        // Transición pal sur
-        else if (player.y <= transitionMargin && currentMapInfo.southMap != null) {
-            transitionToMap(currentMapInfo.southMap, player.x, worldHeightPx - transitionMargin);
+        else if (playerBottom <= margin && currentMapInfo.southMap != null) {
+            transitionToMap(currentMapInfo.southMap, player.x, worldHeightPx - tileHeight * 3);
+            transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
-        // Transición pal este
-        else if (player.x >= worldWidthPx - transitionMargin && currentMapInfo.eastMap != null) {
-            transitionToMap(currentMapInfo.eastMap, transitionMargin, player.y);
+        else if (playerRight >= worldWidthPx - margin && currentMapInfo.eastMap != null) {
+            transitionToMap(currentMapInfo.eastMap, tileWidth * 2, player.y);
+            transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
-        // Transición pal oeste
-        else if (player.x <= transitionMargin && currentMapInfo.westMap != null) {
-            transitionToMap(currentMapInfo.westMap, worldWidthPx - transitionMargin, player.y);
+        else if (playerLeft <= margin && currentMapInfo.westMap != null) {
+            transitionToMap(currentMapInfo.westMap, worldWidthPx - tileWidth * 3, player.y);
+            transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
     }
 
-    /**
-     * Realiza la transición a otro mapa
-     */
     private void transitionToMap(String newMapFile, float newPlayerX, float newPlayerY) {
-        Gdx.app.log("MapManager", "Transición a: " + newMapFile);
         loadMap(newMapFile, newPlayerX, newPlayerY);
     }
 
-    // Para que la camara no se salga de los limite
     private void calculateCameraBounds(float viewportWidth, float viewportHeight) {
         cameraMinX = viewportWidth / 2;
         cameraMaxX = worldWidthPx - viewportWidth / 2;
@@ -167,22 +174,27 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Posicion de la camara sin salirse del limite
     private void updateCamera() {
         float cameraX = Math.max(cameraMinX, Math.min(cameraMaxX, player.x));
         float cameraY = Math.max(cameraMinY, Math.min(cameraMaxY, player.y));
-
         camara.position.set(cameraX, cameraY, 0);
         camara.update();
     }
 
-    // Verifica colision
     public boolean isCollision(float x, float y) {
+        if (x < 0 || x >= worldWidthPx || y < 0 || y >= worldHeightPx) {
+            return true;
+        }
+
         int tileX = (int) (x / tileWidth);
         int tileY = (int) (y / tileHeight);
 
         if (tileX < 0 || tileX >= mapWidth || tileY < 0 || tileY >= mapHeight) {
             return true;
+        }
+
+        if (collisionLayer == null) {
+            return false;
         }
 
         TiledMapTileLayer.Cell cell = collisionLayer.getCell(tileX, tileY);
@@ -191,23 +203,29 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // 1. Lógica de movimiento
-        player.update(delta);
+        // Actualizar cooldown
+        if (transitionCooldown > 0) {
+            transitionCooldown -= delta;
+        }
 
-        // 2. Verificar transiciones de mapa
-        checkMapTransition();
+        // 1. Manejo de teclas
+        handleInput();
 
-        // 3. Renderizado
+        // 2. Lógica del juego (solo si NO hay menú abierto)
+        if (player.getMenuState() == MenuState.NONE) {
+            player.update(delta);
+            checkMapTransition();
+            updateCamera();
+        }
+
+        // 3. Limpiar pantalla
         ScreenUtils.clear(0, 0, 0, 1);
 
-        // 4. Actualizar cámara
-        updateCamera();
-
-        // 5. Dibujar mapa
+        // 4. Dibujar el mundo (SIEMPRE)
         renderer.setView(camara);
         renderer.render();
 
-        // 6. Dibujar jugador
+        // 5. Dibujar al jugador (SIEMPRE)
         spriteBatch.setProjectionMatrix(camara.combined);
         spriteBatch.begin();
         spriteBatch.draw(player.currentFrame,
@@ -216,9 +234,279 @@ public class GameScreen implements Screen {
             player.width,
             player.height);
         spriteBatch.end();
+
+        // 6. Dibujar HUD (solo si no hay menú)
+        if (player.getMenuState() == MenuState.NONE) {
+            dibujarHUD();
+        }
+
+        // 7. Dibujar menú (si hay alguno activo)
+        if (player.getMenuState() != MenuState.NONE) {
+            dibujarMenu();
+        }
     }
 
-    // más metodos y sobreescrituras
+    // Manejar entrada del teclado
+    private void handleInput() {
+        // Tecla I para abrir/cerrar menú principal
+        if (Gdx.input.isKeyJustPressed(Keys.I)) {
+            if (player.getMenuState() == MenuState.NONE) {
+                player.setMenuState(MenuState.MAIN);
+            } else {
+                player.setMenuState(MenuState.NONE);
+            }
+        }
+
+        // Tecla ESC para retroceder
+        if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+            player.goBack();
+        }
+
+        // Solo procesar navegación si hay un menú activo
+        if (player.getMenuState() != MenuState.NONE) {
+            // Flechas para navegar
+            if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                player.moveMenuUp();
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                player.moveMenuDown();
+            }
+
+            // Enter para seleccionar
+            if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                player.selectMenuItem();
+            }
+        }
+    }
+
+    // Método para dibujar el menú activo
+    private void dibujarMenu() {
+        // Usar proyección de pantalla para el menú
+        spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        spriteBatch.begin();
+
+        // Fondo semitransparente
+        spriteBatch.setColor(0, 0, 0, 0.7f);
+        spriteBatch.draw(whitePixel, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        spriteBatch.setColor(Color.WHITE);
+
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+
+        // Dibujar según el estado del menú
+        switch (player.getMenuState()) {
+            case MAIN:
+                dibujarMenuPrincipal(screenWidth, screenHeight);
+                break;
+            case INVENTORY:
+                dibujarInventario(screenWidth, screenHeight);
+                break;
+            case POKEMON:
+                dibujarPokemon(screenWidth, screenHeight);
+                break;
+            case POKEDEX:
+                dibujarPokedex(screenWidth, screenHeight);
+                break;
+            case CRAFTING:
+                dibujarCrafteo(screenWidth, screenHeight);
+                break;
+            case SAVE:
+                dibujarGuardar(screenWidth, screenHeight);
+                break;
+            case OPTIONS:
+                dibujarOpciones(screenWidth, screenHeight);
+                break;
+        }
+
+        // Instrucciones generales
+        dibujarInstrucciones(screenWidth, screenHeight);
+
+        spriteBatch.end();
+
+        // Restaurar proyección de la cámara
+        spriteBatch.setProjectionMatrix(camara.combined);
+    }
+
+    // Menú Principal
+    private void dibujarMenuPrincipal(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        String titulo = "MENÚ PRINCIPAL";
+        float tituloWidth = font.getData().scaleX * titulo.length() * 10;
+        font.draw(spriteBatch, titulo, (screenWidth - tituloWidth) / 2, screenHeight - 100);
+        font.getData().setScale(1.0f);
+
+        String[] opciones = {
+            "Pokémon",
+            "Pokédex",
+            "Inventario",
+            "Crafteo",
+            "Guardar partida",
+            "Opciones"
+        };
+
+        float startX = screenWidth / 2 - 100;
+        float startY = screenHeight / 2 + 100;
+        float espacio = 40;
+
+        for (int i = 0; i < opciones.length; i++) {
+            if (i == player.getMenuSelection()) {
+                font.setColor(Color.YELLOW);
+                font.draw(spriteBatch, "> " + opciones[i], startX - 20, startY - i * espacio);
+                font.setColor(Color.WHITE);
+            } else {
+                font.draw(spriteBatch, opciones[i], startX, startY - i * espacio);
+            }
+        }
+    }
+
+    // Inventario
+    private void dibujarInventario(int screenWidth, int screenHeight) {
+        font.getData().setScale(1.8f);
+        font.draw(spriteBatch, "INVENTARIO", screenWidth / 2 - 80, screenHeight - 80);
+        font.getData().setScale(1.0f);
+
+        font.draw(spriteBatch, "Capacidad: " + player.getInventario().getCantidadItems() +
+                "/" + player.getInventario().getCapacidadMaxima(),
+            screenWidth / 2 - 100, screenHeight - 120);
+
+        // Mostrar Poké Balls y Pociones destacados
+        Ranura pokeballs = player.getInventario().buscarItem("Poké Ball");
+        Ranura pociones = player.getInventario().buscarItem("Poción");
+
+        float y = screenHeight - 170;
+        if (pokeballs != null) {
+            font.draw(spriteBatch, "Poké Balls: " + pokeballs.getCantidad(), screenWidth * 0.2f, y);
+        }
+        if (pociones != null) {
+            font.draw(spriteBatch, "Pociones: " + pociones.getCantidad(), screenWidth * 0.6f, y);
+        }
+
+        // Lista de todos los items
+        float startX = screenWidth * 0.2f;
+        float startY = y - 50;
+        float espacio = 25;
+
+        List<Ranura> slots = player.getInventario().getRanuras();
+        for (int i = 0; i < slots.size(); i++) {
+            Ranura slot = slots.get(i);
+            float itemY = startY - i * espacio;
+
+            if (itemY < 100) {
+                startX += 200;
+                startY = y - 50;
+                i--;
+                continue;
+            }
+
+            String itemText = "• " + slot.getItem().getNombre() + " x" + slot.getCantidad();
+            font.draw(spriteBatch, itemText, startX, itemY);
+        }
+    }
+
+    // Pokémon (placeholder)
+    private void dibujarPokemon(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        font.draw(spriteBatch, "POKÉMON", screenWidth / 2 - 60, screenHeight - 100);
+        font.getData().setScale(1.0f);
+
+        font.draw(spriteBatch, "Aquí iría tu equipo Pokémon", screenWidth / 2 - 120, screenHeight / 2);
+        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+    }
+
+    // Pokédex (placeholder)
+    private void dibujarPokedex(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        font.draw(spriteBatch, "POKÉDEX", screenWidth / 2 - 60, screenHeight - 100);
+        font.getData().setScale(1.0f);
+
+        font.draw(spriteBatch, "Registro de Pokémon investigados", screenWidth / 2 - 140, screenHeight / 2);
+        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+    }
+
+    // Crafteo (placeholder)
+    private void dibujarCrafteo(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        font.draw(spriteBatch, "CRAFTEO", screenWidth / 2 - 60, screenHeight - 100);
+        font.getData().setScale(1.0f);
+
+        font.draw(spriteBatch, "Crear objetos a partir de recursos", screenWidth / 2 - 150, screenHeight / 2);
+        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+    }
+
+    // Guardar (placeholder)
+    private void dibujarGuardar(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        font.draw(spriteBatch, "GUARDAR PARTIDA", screenWidth / 2 - 120, screenHeight - 100);
+        font.getData().setScale(1.0f);
+
+        font.draw(spriteBatch, "Guardar progreso actual", screenWidth / 2 - 100, screenHeight / 2);
+        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+    }
+
+    // Opciones (placeholder)
+    private void dibujarOpciones(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        font.draw(spriteBatch, "OPCIONES", screenWidth / 2 - 60, screenHeight - 100);
+        font.getData().setScale(1.0f);
+
+        String[] opciones = {
+            "Volumen: ███████░░░",
+            "Pantalla: Ventana",
+            "Controles",
+            "Créditos"
+        };
+
+        float startX = screenWidth / 2 - 150;
+        float startY = screenHeight / 2 + 50;
+        float espacio = 40;
+
+        for (int i = 0; i < opciones.length; i++) {
+            if (i == player.getMenuSelection()) {
+                font.setColor(Color.YELLOW);
+                font.draw(spriteBatch, "> " + opciones[i], startX - 20, startY - i * espacio);
+                font.setColor(Color.WHITE);
+            } else {
+                font.draw(spriteBatch, opciones[i], startX, startY - i * espacio);
+            }
+        }
+    }
+
+    // Instrucciones del menú
+    private void dibujarInstrucciones(int screenWidth, int screenHeight) {
+        font.getData().setScale(0.9f);
+        String instrucciones = "";
+
+        switch (player.getMenuState()) {
+            case MAIN:
+                instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC/I: Salir";
+                break;
+            case INVENTORY:
+                instrucciones = "Flechas: Navegar | Enter: Usar item | ESC: Volver";
+                break;
+            default:
+                instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC: Volver";
+                break;
+        }
+
+        float instruccionWidth = font.getData().scaleX * instrucciones.length() * 6;
+        font.draw(spriteBatch, instrucciones, (screenWidth - instruccionWidth) / 2, 50);
+        font.getData().setScale(1.0f);
+    }
+
+    // HUD durante el juego
+    private void dibujarHUD() {
+        spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        spriteBatch.begin();
+
+        float hudX = 10;
+        float hudY = Gdx.graphics.getHeight() - 30;
+
+        font.draw(spriteBatch, "I - Menú", hudX, hudY);
+
+        spriteBatch.end();
+        spriteBatch.setProjectionMatrix(camara.combined);
+    }
+
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height);
@@ -231,12 +519,11 @@ public class GameScreen implements Screen {
         if (renderer != null) renderer.dispose();
         if (spriteBatch != null) spriteBatch.dispose();
         if (player != null) player.dispose();
+        if (font != null) font.dispose();
+        if (whitePixel != null) whitePixel.dispose();
     }
 
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-
-    // Variables temporales para el constructor
-    private float playerStartX, playerStartY;
 }

@@ -5,9 +5,11 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.pokemon.game.MainMenuScreen;
 
 public class TitleScreen implements Screen {
 
@@ -17,6 +19,7 @@ public class TitleScreen implements Screen {
 
     // Nuevas variables para el texto
     BitmapFont font;
+    GlyphLayout glyphLayout;
     float blinkTimer = 0f;
     boolean showText = true;
 
@@ -28,7 +31,9 @@ public class TitleScreen implements Screen {
         // Inicializar la fuente
         font = new BitmapFont();
         font.setColor(Color.WHITE);
-        font.getData().setScale(1.5f); // Tamaño de fuente más grande
+        font.getData().setScale(1.5f); // Escala para el texto parpadeante
+
+        glyphLayout = new GlyphLayout();
     }
 
     @Override
@@ -46,23 +51,40 @@ public class TitleScreen implements Screen {
             showText = !showText;
         }
 
-        // Dibujar texto parpadeante
+        // Dibujar texto parpadeante "Presiona ENTER"
         if (showText) {
             String message = "Presiona ENTER para empezar";
 
-            // Calcular posición centrada en X y en la parte inferior en Y
-            float textWidth = font.getXHeight() * message.length() * 1.2f; // Aproximación del ancho
-            float x = (Gdx.graphics.getWidth() - textWidth) / 2;
+            // Usar GlyphLayout para calcular el ancho correcto
+            glyphLayout.setText(font, message);
+            float x = (Gdx.graphics.getWidth() - glyphLayout.width) / 2;
             float y = Gdx.graphics.getHeight() * 0.2f; // 20% desde abajo
 
-            font.draw(batch, message, x, y);
+            font.draw(batch, glyphLayout, x, y);
         }
+
+        // Dibujar texto fijo para volver al menú
+        font.getData().setScale(1.0f);
+        String backMessage = "Presiona ESC para volver al menú";
+        glyphLayout.setText(font, backMessage);
+        float backX = (Gdx.graphics.getWidth() - glyphLayout.width) / 2;
+        float backY = Gdx.graphics.getHeight() * 0.1f; // 10% desde abajo
+        font.draw(batch, backMessage, backX, backY);
+
+        // Restaurar escala original para el parpadeo
+        font.getData().setScale(1.5f);
 
         batch.end();
 
         // Lógica de transición al presionar ENTER
         if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
             game.setScreen(new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16));
+            dispose();
+        }
+
+        // Lógica para volver al menú principal con ESC
+        if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+            game.setScreen(new MainMenuScreen(game));
             dispose();
         }
     }

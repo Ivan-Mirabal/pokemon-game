@@ -2,15 +2,17 @@ package com.pokemon.game;
 
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MapManager {
 
     public static class MapInfo {
         public String mapFile;
-        public String northMap; // Mapa al norte
-        public String southMap; // Mapa al sur
-        public String eastMap;  // Mapa al este
-        public String westMap;  // Mapa al oeste
+        public String northMap;
+        public String southMap;
+        public String eastMap;
+        public String westMap;
 
         public MapInfo(String mapFile, String north, String south, String east, String west) {
             this.mapFile = mapFile;
@@ -21,27 +23,58 @@ public class MapManager {
         }
     }
 
-    // Registro de mapas disponibles (propenso a mucho cambio)
-    public static MapInfo[] MAPAS = {
-        new MapInfo("maps/mapa_centro.tmx", "maps/mapa_norte.tmx", "maps/mapa_sur.tmx", "maps/mapa_este.tmx", "maps/mapa_oeste.tmx"),
-        new MapInfo("maps/mapa_norte.tmx", null, "maps/mapa_centro.tmx", null, null),
-        new MapInfo("maps/mapa_sur.tmx", "maps/mapa_centro.tmx", null, null, null),
-        new MapInfo("maps/mapa_este.tmx", null, null, null, "maps/mapa_centro.tmx"),
-        new MapInfo("maps/mapa_oeste.tmx", null, null, "maps/mapa_centro.tmx", null)
-    };
+    // Usar HashMap para acceso más eficiente
+    private static final Map<String, MapInfo> MAPAS = new HashMap<>();
+
+    // Cargador estático
+    private static final TmxMapLoader MAP_LOADER = new TmxMapLoader();
+
+    static {
+        // Inicializar mapa de mapas
+        MAPAS.put("maps/mapa_centro.tmx",
+            new MapInfo("maps/mapa_centro.tmx",
+                "maps/mapa_norte.tmx",
+                "maps/mapa_sur.tmx",
+                "maps/mapa_este.tmx",
+                "maps/mapa_oeste.tmx"));
+        MAPAS.put("maps/mapa_norte.tmx",
+            new MapInfo("maps/mapa_norte.tmx",
+                null,
+                "maps/mapa_centro.tmx",
+                null,
+                null));
+        MAPAS.put("maps/mapa_sur.tmx",
+            new MapInfo("maps/mapa_sur.tmx",
+                "maps/mapa_centro.tmx",
+                null,
+                null,
+                null));
+        MAPAS.put("maps/mapa_este.tmx",
+            new MapInfo("maps/mapa_este.tmx",
+                null,
+                null,
+                null,
+                "maps/mapa_centro.tmx"));
+        MAPAS.put("maps/mapa_oeste.tmx",
+            new MapInfo("maps/mapa_oeste.tmx",
+                null,
+                null,
+                "maps/mapa_centro.tmx",
+                null));
+    }
 
     // Info del mapa
     public static MapInfo getMapInfo(String mapFile) {
-        for (MapInfo info : MAPAS) {
-            if (info.mapFile.equals(mapFile)) {
-                return info;
-            }
-        }
-        return null;
+        return MAPAS.get(mapFile);
     }
 
     // Cargar el mapa
     public static TiledMap loadMap(String mapFile) {
-        return new TmxMapLoader().load(mapFile);
+        return MAP_LOADER.load(mapFile);
+    }
+
+    // Método para agregar mapas dinámicamente (opcional)
+    public static void registerMap(MapInfo mapInfo) {
+        MAPAS.put(mapInfo.mapFile, mapInfo);
     }
 }

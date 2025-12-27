@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Player {
 
@@ -21,11 +23,8 @@ public class Player {
     private Texture spriteSheet;
     private TextureRegion[][] frames;
 
-    // Animaciones separadas para cada dirección
-    private Animation<TextureRegion> walkDownAnimation;
-    private Animation<TextureRegion> walkUpAnimation;
-    private Animation<TextureRegion> walkLeftAnimation;
-    private Animation<TextureRegion> walkRightAnimation;
+    // Animaciones en array para simplificar
+    private Animation<TextureRegion>[] animations;
 
     private final int frameCols = 4;
     private final int frameRows = 4;
@@ -39,6 +38,14 @@ public class Player {
 
     private int tileWidth, tileHeight;
     private GameScreen gameScreen;
+
+    // Variables del Inventario
+    private Inventario inventario;
+
+    // Variables del Menú
+    private MenuState menuState;
+    private int menuSelection;
+    private boolean inSubMenu;
 
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
         this.x = startX;
@@ -65,39 +72,42 @@ public class Player {
 
         // Frame inicial estático mirando hacia abajo
         currentFrame = frames[DIR_DOWN][0];
+
+        // INICIALIZAR INVENTARIO
+        this.inventario = new Inventario(20); // Capacidad de 20 slots
+
+        // INICIALIZAR ESTADO DEL MENÚ
+        this.menuState = MenuState.NONE;
+        this.menuSelection = 0;
+        this.inSubMenu = false;
+
+        // Agregar algunos items iniciales para pruebas
+        inventario.agregarItem(new Pokeball(), 5);
+        inventario.agregarItem(new Curacion("Poción", 20), 3);
+        inventario.agregarItem(new Recurso("Planta", "Planta"), 5);
+        inventario.agregarItem(new Recurso("Guijarro", "Guijarro"), 8);
+        inventario.agregarItem(new Recurso("Baya", "Baya"), 3);
     }
 
+    @SuppressWarnings("unchecked")
     private void setupAllAnimations() {
-        // Animación para caminar hacia abajo
-        Array<TextureRegion> downFrames = new Array<TextureRegion>();
-        for (int col = 0; col < frameCols; col++) {
-            downFrames.add(frames[DIR_DOWN][col]);
-        }
-        walkDownAnimation = new Animation<TextureRegion>(0.1f, downFrames, Animation.PlayMode.LOOP);
+        animations = new Animation[4];
 
-        // Animación para caminar hacia arriba
-        Array<TextureRegion> upFrames = new Array<TextureRegion>();
-        for (int col = 0; col < frameCols; col++) {
-            upFrames.add(frames[DIR_UP][col]);
+        for (int dir = 0; dir < 4; dir++) {
+            Array<TextureRegion> dirFrames = new Array<>();
+            for (int col = 0; col < frameCols; col++) {
+                dirFrames.add(frames[dir][col]);
+            }
+            animations[dir] = new Animation<>(0.1f, dirFrames, Animation.PlayMode.LOOP);
         }
-        walkUpAnimation = new Animation<TextureRegion>(0.1f, upFrames, Animation.PlayMode.LOOP);
-
-        // Animación para caminar hacia la izquierda
-        Array<TextureRegion> leftFrames = new Array<TextureRegion>();
-        for (int col = 0; col < frameCols; col++) {
-            leftFrames.add(frames[DIR_LEFT][col]);
-        }
-        walkLeftAnimation = new Animation<TextureRegion>(0.1f, leftFrames, Animation.PlayMode.LOOP);
-
-        // Animación para caminar hacia la derecha
-        Array<TextureRegion> rightFrames = new Array<TextureRegion>();
-        for (int col = 0; col < frameCols; col++) {
-            rightFrames.add(frames[DIR_RIGHT][col]);
-        }
-        walkRightAnimation = new Animation<TextureRegion>(0.1f, rightFrames, Animation.PlayMode.LOOP);
     }
 
     public void update(float delta) {
+        // Si hay algún menú activo, no mover al jugador
+        if (menuState != MenuState.NONE) {
+            return;
+        }
+
         float movement = speed * delta;
         isMoving = false;
 
@@ -105,7 +115,7 @@ public class Player {
         float prevX = x;
         float prevY = y;
 
-        // Magia bizarra para caminar en una sola direccion
+        // Movimiento en una sola dirección
         if (Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
             x -= movement;
             currentDir = DIR_LEFT;
@@ -127,42 +137,146 @@ public class Player {
             isMoving = true;
         }
 
-        // 2. Verificar colisión
+        // Verificar colisión
         if (gameScreen.isCollision(x, y)) {
             x = prevX;
             y = prevY;
             isMoving = false; // Detener animación si hay colisión
         }
 
-        // 3. Actualizar estado de animación
+        // Actualizar estado de animación
         if (isMoving) {
             // Incrementar el tiempo solo si realmente nos estamos moviendo
             stateTime += delta;
-
-            // Seleccionar la animación correcta según la dirección
-            switch (currentDir) {
-                case DIR_DOWN:
-                    currentFrame = walkDownAnimation.getKeyFrame(stateTime, true);
-                    break;
-                case DIR_UP:
-                    currentFrame = walkUpAnimation.getKeyFrame(stateTime, true);
-                    break;
-                case DIR_LEFT:
-                    currentFrame = walkLeftAnimation.getKeyFrame(stateTime, true);
-                    break;
-                case DIR_RIGHT:
-                    currentFrame = walkRightAnimation.getKeyFrame(stateTime, true);
-                    break;
-            }
+            currentFrame = animations[currentDir].getKeyFrame(stateTime, true);
         } else {
             // Cuando está quieto, mostrar el primer frame estático de la dirección actual
             currentFrame = frames[currentDir][0];
-            // Reiniciar el stateTime para que la animación empiece desde el principio la próxima vez
+            // Reiniciar el stateTime para que la animación empiece desde el principio
             stateTime = 0;
         }
     }
 
-    // XD
+    // MÉTODOS DEL INVENTARIO
+    public Inventario getInventario() {
+        return inventario;
+    }
+
+    public boolean recolectarRecurso(Recurso recurso) {
+        return inventario.agregarItem(recurso);
+    }
+
+    public boolean usarItem(String nombreItem) {
+        Ranura slot = inventario.buscarItem(nombreItem);
+        if (slot != null && slot.getCantidad() > 0) {
+            slot.getItem().usar();
+            slot.decrementar(1);
+
+            if (slot.getCantidad() <= 0) {
+                inventario.removerItem(nombreItem, 0);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // MÉTODOS DEL MENÚ
+    public MenuState getMenuState() {
+        return menuState;
+    }
+
+    public void setMenuState(MenuState state) {
+        this.menuState = state;
+        this.menuSelection = 0; // Resetear selección al cambiar estado
+        this.inSubMenu = (state != MenuState.MAIN && state != MenuState.NONE);
+    }
+
+    public void toggleMenu() {
+        if (menuState == MenuState.NONE) {
+            setMenuState(MenuState.MAIN);
+        } else {
+            setMenuState(MenuState.NONE);
+        }
+    }
+
+    public int getMenuSelection() {
+        return menuSelection;
+    }
+
+    public void setMenuSelection(int selection) {
+        this.menuSelection = selection;
+    }
+
+    public void moveMenuUp() {
+        menuSelection--;
+        if (menuSelection < 0) {
+            menuSelection = getMaxMenuItems() - 1;
+        }
+    }
+
+    public void moveMenuDown() {
+        menuSelection++;
+        if (menuSelection >= getMaxMenuItems()) {
+            menuSelection = 0;
+        }
+    }
+
+    public void selectMenuItem() {
+        switch (menuState) {
+            case MAIN:
+                handleMainMenuSelection();
+                break;
+            case INVENTORY:
+                // Aquí iría la lógica para seleccionar un item del inventario
+                break;
+            // Otros casos para otros menús
+        }
+    }
+
+    public void goBack() {
+        if (inSubMenu) {
+            setMenuState(MenuState.MAIN);
+        } else {
+            setMenuState(MenuState.NONE);
+        }
+    }
+
+    private void handleMainMenuSelection() {
+        switch (menuSelection) {
+            case 0: // Pokémon
+                setMenuState(MenuState.POKEMON);
+                break;
+            case 1: // Pokédex
+                setMenuState(MenuState.POKEDEX);
+                break;
+            case 2: // Inventario
+                setMenuState(MenuState.INVENTORY);
+                break;
+            case 3: // Crafteo
+                setMenuState(MenuState.CRAFTING);
+                break;
+            case 4: // Guardar partida
+                setMenuState(MenuState.SAVE);
+                break;
+            case 5: // Opciones
+                setMenuState(MenuState.OPTIONS);
+                break;
+        }
+    }
+
+    private int getMaxMenuItems() {
+        switch (menuState) {
+            case MAIN:
+                return 6; // 6 opciones en el menú principal
+            case INVENTORY:
+                // CORRECCIÓN: Usar this.getInventario() o inventario directamente
+                return this.getInventario().getRanuras().size();
+            // Otros casos
+            default:
+                return 0;
+        }
+    }
+
     public void dispose() {
         spriteSheet.dispose();
     }

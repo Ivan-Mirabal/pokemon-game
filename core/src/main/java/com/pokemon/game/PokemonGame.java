@@ -1,18 +1,25 @@
 package com.pokemon.game;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
 
 public class PokemonGame extends Game {
 
     @Override
     public void create() {
-        //Crea el juego y muestra la pantalla de inicio
-        setScreen(new TitleScreen(this));
+
+        Gdx.app.setLogLevel(Application.LOG_DEBUG);
+
+        // Comenzar con la pantalla de inicio
+        setScreen(new SplashScreen(this));
+
+        // O si quieres ir directamente al menú principal:
+        // setScreen(new MainMenuScreen(this));
     }
 
     @Override
     public void dispose() {
-        //Cierra el juego y limpia todas las cosas necesarias
         super.dispose();
     }
 }
