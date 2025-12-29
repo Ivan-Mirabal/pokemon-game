@@ -47,6 +47,11 @@ public class Player {
     private int menuSelection;
     private boolean inSubMenu;
 
+    // Variables para selección de inventario
+    private Ranura itemSeleccionado = null;
+    private int inventarioPage = 0;
+    private final int ITEMS_PER_PAGE = 10;
+
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
         this.x = startX;
         this.y = startY;
@@ -73,16 +78,18 @@ public class Player {
         // Frame inicial estático mirando hacia abajo
         currentFrame = frames[DIR_DOWN][0];
 
-        // INICIALIZAR INVENTARIO
-        this.inventario = new Inventario(20); // Capacidad de 20 slots
+        // INICIALIZAR INVENTARIO (AHORA 50 ÍTEMS TOTALES)
+        this.inventario = new Inventario(50);
 
         // INICIALIZAR ESTADO DEL MENÚ
         this.menuState = MenuState.NONE;
         this.menuSelection = 0;
         this.inSubMenu = false;
 
-        // Agregar algunos items iniciales para pruebas
-        inventario.agregarItem(new Pokeball(), 5);
+        // CORRECCIÓN: Usar nombres consistentes
+        // "Poké Ball" con tilde y espacio (como se busca en GameScreen)
+
+        inventario.agregarItem(new Pokeball(), 5); // Pokeball se llama "Poké Ball" internamente
         inventario.agregarItem(new Curacion("Poción", 20), 3);
         inventario.agregarItem(new Recurso("Planta", "Planta"), 5);
         inventario.agregarItem(new Recurso("Guijarro", "Guijarro"), 8);
@@ -166,14 +173,14 @@ public class Player {
         return inventario.agregarItem(recurso);
     }
 
+    // CORRECCIÓN DEL BUG DE DOBLE DECREMENTO
     public boolean usarItem(String nombreItem) {
         Ranura slot = inventario.buscarItem(nombreItem);
         if (slot != null && slot.getCantidad() > 0) {
-            slot.getItem().usar();
-            slot.decrementar(1);
+            slot.usar();  // ← ¡NUEVO! Usar desde la Ranura
 
             if (slot.getCantidad() <= 0) {
-                inventario.removerItem(nombreItem, 0);
+                inventario.removerItem(nombreItem, 0);  // Eliminar ranura vacía
             }
             return true;
         }
@@ -227,9 +234,39 @@ public class Player {
                 handleMainMenuSelection();
                 break;
             case INVENTORY:
-                // Aquí iría la lógica para seleccionar un item del inventario
+                // Tu código existente para inventario
+                List<Ranura> slots = inventario.getRanuras();
+                if (!slots.isEmpty()) {
+                    int indiceReal = menuSelection + (inventarioPage * ITEMS_PER_PAGE);
+                    if (indiceReal < slots.size()) {
+                        itemSeleccionado = slots.get(indiceReal);
+                        System.out.println("=== ITEM SELECCIONADO ===");
+                        System.out.println("Nombre: " + itemSeleccionado.getItem().getNombre());
+                        System.out.println("Cantidad: " + itemSeleccionado.getCantidad());
+                        System.out.println("Descripción: " + itemSeleccionado.getItem().getDescripcion());
+                    }
+                }
                 break;
-            // Otros casos para otros menús
+            case OPTIONS:
+                // ¡ESTO ES LO QUE ESTABA MAL! Ahora funciona:
+                switch (menuSelection) {
+                    case 0: // Volumen
+                        System.out.println("Volumen ajustado");
+                        // Aquí podrías cambiar el volumen real
+                        break;
+                    case 1: // Pantalla
+                        System.out.println("Pantalla cambiada a modo ventana/completa");
+                        // Aquí podrías cambiar entre ventana y pantalla completa
+                        break;
+                    case 2: // Controles
+                        System.out.println("Mostrando controles...");
+                        break;
+                    case 3: // Créditos
+                        System.out.println("Mostrando créditos...");
+                        break;
+                }
+                break;
+            // Otros casos se mantienen igual
         }
     }
 
@@ -260,6 +297,7 @@ public class Player {
                 break;
             case 5: // Opciones
                 setMenuState(MenuState.OPTIONS);
+                menuSelection = 0; // ← ¡IMPORTANTE! Resetear a la primera opción
                 break;
         }
     }
@@ -267,14 +305,36 @@ public class Player {
     private int getMaxMenuItems() {
         switch (menuState) {
             case MAIN:
-                return 6; // 6 opciones en el menú principal
+                return 6;
             case INVENTORY:
-                // CORRECCIÓN: Usar this.getInventario() o inventario directamente
                 return this.getInventario().getRanuras().size();
-            // Otros casos
+            case OPTIONS:
+                return 4; // ← ¡CORRECTO! 4 opciones en el menú de opciones
             default:
                 return 0;
         }
+    }
+
+    // Métodos para manejar inventario
+    public Ranura getItemSeleccionado() {
+        return itemSeleccionado;
+    }
+
+    public void usarItemSeleccionado() {
+        if (itemSeleccionado != null) {
+            usarItem(itemSeleccionado.getItem().getNombre());
+        }
+    }
+
+    public void tirarItemSeleccionado() {
+        if (itemSeleccionado != null) {
+            inventario.removerItem(itemSeleccionado.getItem().getNombre(), 1);
+            System.out.println("Has tirado 1 " + itemSeleccionado.getItem().getNombre());
+        }
+    }
+
+    public void cancelarSeleccionItem() {
+        itemSeleccionado = null;
     }
 
     public void dispose() {

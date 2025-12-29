@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Inventario {
-    private int capacidadMaxima;
+    private int capacidadMaxima;  // Ahora = máximo de ÍTEMS totales (no slots)
     private List<Ranura> slots;
+    private int cantidadTotal;    // Para llevar conteo rápido
 
     public Inventario(int capacidadMaxima) {
         this.capacidadMaxima = capacidadMaxima;
         this.slots = new ArrayList<>();
+        this.cantidadTotal = 0;
     }
 
     public boolean agregarItem(Item item) {
@@ -17,35 +19,46 @@ public class Inventario {
     }
 
     public boolean agregarItem(Item item, int cantidad) {
-        // Buscar si ya existe el item
+        // 1. Verificar si hay espacio TOTAL
+        if (cantidadTotal + cantidad > capacidadMaxima) {
+            return false; // Inventario lleno
+        }
+
+        // 2. Buscar si ya existe el ítem para stackear
         for (Ranura slot : slots) {
             if (slot.getItem().getNombre().equals(item.getNombre())) {
                 slot.incrementar(cantidad);
+                cantidadTotal += cantidad;
                 return true;
             }
         }
 
-        // Si no existe y hay espacio
-        if (slots.size() < capacidadMaxima) {
-            slots.add(new Ranura(item, cantidad));
-            return true;
-        }
-
-        return false; // No hay espacio
+        // 3. Si no existe y hay espacio total, crear nueva ranura
+        // NOTA: Aún necesitamos verificar que no excedamos slots infinitos
+        // Pero como slots no tiene límite técnico, solo verificamos cantidadTotal
+        slots.add(new Ranura(item, cantidad));
+        cantidadTotal += cantidad;
+        return true;
     }
 
     public boolean removerItem(String nombreItem, int cantidad) {
         for (int i = 0; i < slots.size(); i++) {
             Ranura slot = slots.get(i);
             if (slot.getItem().getNombre().equals(nombreItem)) {
+                if (slot.getCantidad() < cantidad) {
+                    return false; // No hay suficiente cantidad
+                }
+
                 slot.decrementar(cantidad);
+                cantidadTotal -= cantidad;
+
                 if (slot.getCantidad() <= 0) {
                     slots.remove(i);
                 }
                 return true;
             }
         }
-        return false;
+        return false; // No existe el ítem
     }
 
     public Ranura buscarItem(String nombreItem) {
@@ -57,12 +70,29 @@ public class Inventario {
         return null;
     }
 
+    // MÉTODO MEJORADO: Verificar espacio para X cantidad
     public boolean verificarEspacio() {
-        return slots.size() < capacidadMaxima;
+        return cantidadTotal < capacidadMaxima;
     }
 
+    public boolean hayEspacioPara(int cantidad) {
+        return (cantidadTotal + cantidad) <= capacidadMaxima;
+    }
+
+    // MÉTODO NUEVO: Espacio disponible
+    public int getEspacioDisponible() {
+        return capacidadMaxima - cantidadTotal;
+    }
+
+    // Para compatibilidad: mantengo nombre pero ahora cuenta slots
     public int getCantidadItems() {
         return slots.size();
+    }
+
+    // MÉTODO NUEVO: Obtener cantidad de un ítem específico
+    public int getCantidadDeItem(String nombreItem) {
+        Ranura slot = buscarItem(nombreItem);
+        return slot != null ? slot.getCantidad() : 0;
     }
 
     public int getCapacidadMaxima() {
@@ -73,11 +103,14 @@ public class Inventario {
         return new ArrayList<>(slots); // Copia para no modificar la original
     }
 
+    // AHORA ESTE MÉTODO ES CLAVE: Devuelve TOTAL de ítems
     public int getCantidadTotal() {
-        int total = 0;
-        for (Ranura slot : slots) {
-            total += slot.getCantidad();
-        }
-        return total;
+        return cantidadTotal;
+    }
+
+    // Método auxiliar para verificar si tiene cierta cantidad de un ítem
+    public boolean tieneItem(String nombreItem, int cantidadMinima) {
+        int cantidad = getCantidadDeItem(nombreItem);
+        return cantidad >= cantidadMinima;
     }
 }

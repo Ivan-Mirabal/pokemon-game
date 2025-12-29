@@ -262,9 +262,8 @@ public class GameScreen implements Screen {
             player.goBack();
         }
 
-        // Solo procesar navegación si hay un menú activo
         if (player.getMenuState() != MenuState.NONE) {
-            // Flechas para navegar
+            // Flechas para navegar (ya lo tienes)
             if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
                 player.moveMenuUp();
             }
@@ -275,6 +274,22 @@ public class GameScreen implements Screen {
             // Enter para seleccionar
             if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
                 player.selectMenuItem();
+            }
+
+            // AÑADIR ESTO: Teclas numéricas SOLO cuando estamos en inventario con item seleccionado
+            if (player.getMenuState() == MenuState.INVENTORY && player.getItemSeleccionado() != null) {
+                if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
+                    player.usarItemSeleccionado();
+                    player.cancelarSeleccionItem();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
+                    player.tirarItemSeleccionado();
+                    player.cancelarSeleccionItem();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.NUM_3)) {
+                    player.cancelarSeleccionItem();
+                    System.out.println("Selección cancelada");
+                }
             }
         }
     }
@@ -360,14 +375,20 @@ public class GameScreen implements Screen {
     }
 
     // Inventario
+    // Solo muestro la parte modificada del método dibujarInventario()
+    // Inventario - CON SELECCIÓN VISUAL
     private void dibujarInventario(int screenWidth, int screenHeight) {
         font.getData().setScale(1.8f);
         font.draw(spriteBatch, "INVENTARIO", screenWidth / 2 - 80, screenHeight - 80);
         font.getData().setScale(1.0f);
 
-        font.draw(spriteBatch, "Capacidad: " + player.getInventario().getCantidadItems() +
-                "/" + player.getInventario().getCapacidadMaxima(),
-            screenWidth / 2 - 100, screenHeight - 120);
+        Inventario inv = player.getInventario();
+        String capacidad = "Capacidad: " + inv.getCantidadTotal() +
+            "/" + inv.getCapacidadMaxima() + " ítems";
+        String slotsInfo = "(" + inv.getCantidadItems() + " tipos diferentes)";
+
+        font.draw(spriteBatch, capacidad, screenWidth / 2 - 100, screenHeight - 120);
+        font.draw(spriteBatch, slotsInfo, screenWidth / 2 - 100, screenHeight - 140);
 
         // Mostrar Poké Balls y Pociones destacados
         Ranura pokeballs = player.getInventario().buscarItem("Poké Ball");
@@ -381,12 +402,25 @@ public class GameScreen implements Screen {
             font.draw(spriteBatch, "Pociones: " + pociones.getCantidad(), screenWidth * 0.6f, y);
         }
 
-        // Lista de todos los items
+        // Lista de todos los items CON SELECCIÓN
         float startX = screenWidth * 0.2f;
         float startY = y - 50;
         float espacio = 25;
 
         List<Ranura> slots = player.getInventario().getRanuras();
+
+        // Si hay un item seleccionado, mostrarlo destacado
+        Ranura itemSeleccionado = player.getItemSeleccionado();
+        int indiceSeleccionado = -1;
+        if (itemSeleccionado != null) {
+            for (int i = 0; i < slots.size(); i++) {
+                if (slots.get(i).getItem().getNombre().equals(itemSeleccionado.getItem().getNombre())) {
+                    indiceSeleccionado = i;
+                    break;
+                }
+            }
+        }
+
         for (int i = 0; i < slots.size(); i++) {
             Ranura slot = slots.get(i);
             float itemY = startY - i * espacio;
@@ -398,8 +432,29 @@ public class GameScreen implements Screen {
                 continue;
             }
 
-            String itemText = "• " + slot.getItem().getNombre() + " x" + slot.getCantidad();
-            font.draw(spriteBatch, itemText, startX, itemY);
+            // Resaltar item seleccionado
+            if (i == indiceSeleccionado) {
+                font.setColor(Color.YELLOW);
+                font.draw(spriteBatch, "> " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
+                font.setColor(Color.WHITE);
+            }
+            // Resaltar item en el que está el cursor del menú
+            else if (i == player.getMenuSelection()) {
+                font.setColor(Color.CYAN);
+                font.draw(spriteBatch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
+                font.setColor(Color.WHITE);
+            }
+            else {
+                font.draw(spriteBatch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
+            }
+        }
+
+        // Mostrar instrucciones si hay item seleccionado
+        if (itemSeleccionado != null) {
+            font.draw(spriteBatch, "ITEM SELECCIONADO: " + itemSeleccionado.getItem().getNombre(),
+                screenWidth * 0.6f, screenHeight - 200);
+            font.draw(spriteBatch, "1: Usar | 2: Tirar 1 | 3: Cancelar",
+                screenWidth * 0.6f, screenHeight - 230);
         }
     }
 
@@ -444,30 +499,66 @@ public class GameScreen implements Screen {
     }
 
     // Opciones (placeholder)
+    // Menú de Opciones - ARREGLADO
     private void dibujarOpciones(int screenWidth, int screenHeight) {
+        // Título
         font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "OPCIONES", screenWidth / 2 - 60, screenHeight - 100);
+        font.draw(spriteBatch, "OPCIONES", screenWidth / 2 - 70, screenHeight - 100);
         font.getData().setScale(1.0f);
 
+        // Las 4 opciones funcionan correctamente
         String[] opciones = {
-            "Volumen: ███████░░░",
-            "Pantalla: Ventana",
-            "Controles",
-            "Créditos"
+            "Ajustar Volumen",
+            "Pantalla Completa",
+            "Ver Controles",
+            "Ver Créditos"
         };
 
         float startX = screenWidth / 2 - 150;
-        float startY = screenHeight / 2 + 50;
-        float espacio = 40;
+        float startY = screenHeight / 2 + 80;
+        float espacio = 50;
 
         for (int i = 0; i < opciones.length; i++) {
+            // Resaltar la opción seleccionada
             if (i == player.getMenuSelection()) {
+                // Fondo para la opción seleccionada
+                spriteBatch.setColor(0.2f, 0.2f, 0.5f, 0.8f);
+                spriteBatch.draw(whitePixel, startX - 20, startY - i * espacio - 20, 340, 35);
+                spriteBatch.setColor(Color.WHITE);
+
+                // Texto de la opción seleccionada
                 font.setColor(Color.YELLOW);
-                font.draw(spriteBatch, "> " + opciones[i], startX - 20, startY - i * espacio);
+                font.draw(spriteBatch, "➤ " + opciones[i], startX, startY - i * espacio);
                 font.setColor(Color.WHITE);
             } else {
-                font.draw(spriteBatch, opciones[i], startX, startY - i * espacio);
+                // Texto normal
+                font.draw(spriteBatch, "  " + opciones[i], startX, startY - i * espacio);
             }
+        }
+
+        // Información adicional sobre la opción seleccionada
+        float infoY = startY - (opciones.length * espacio) - 40;
+        String info = "";
+
+        switch (player.getMenuSelection()) {
+            case 0:
+                info = "Ajusta el volumen de efectos y música";
+                break;
+            case 1:
+                info = "Alterna entre ventana y pantalla completa";
+                break;
+            case 2:
+                info = "Muestra los controles del juego";
+                break;
+            case 3:
+                info = "Información sobre los desarrolladores";
+                break;
+        }
+
+        if (!info.isEmpty()) {
+            font.setColor(Color.LIGHT_GRAY);
+            font.draw(spriteBatch, info, screenWidth / 2 - 200, infoY);
+            font.setColor(Color.WHITE);
         }
     }
 
@@ -481,7 +572,10 @@ public class GameScreen implements Screen {
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC/I: Salir";
                 break;
             case INVENTORY:
-                instrucciones = "Flechas: Navegar | Enter: Usar item | ESC: Volver";
+                instrucciones = "Flechas: Navegar | Enter: Seleccionar item | 1/2/3: Acciones | ESC: Volver";
+                break;
+            case OPTIONS:
+                instrucciones = "Flechas: Navegar opciones | Enter: Seleccionar | ESC: Volver al menú principal"; // ← Fijo
                 break;
             default:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC: Volver";
