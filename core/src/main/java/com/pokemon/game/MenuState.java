@@ -7,7 +7,7 @@ public enum MenuState {
     INVENTORY_ITEM_SELECTED, // Item seleccionado en inventario
     POKEMON,        // Pokémon
     POKEDEX,        // Pokédex
-    CRAFTING,       // Crafteo
+    CRAFTING,       // Crafteo ← ¡YA EXISTE!
     SAVE,           // Guardar partida
     OPTIONS,        // Opciones
     OPTIONS_VOLUME, // Submenú de volumen

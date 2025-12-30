@@ -1,4 +1,4 @@
-package com.pokemon.game;
+package com.pokemon.game.game;
 
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;

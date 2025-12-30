@@ -1,4 +1,4 @@
-package com.pokemon.game;
+package com.pokemon.game.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -14,6 +14,12 @@ import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.pokemon.game.*;
+import com.pokemon.game.item.Crafteo;
+import com.pokemon.game.player.Inventario;
+import com.pokemon.game.player.Player;
+import com.pokemon.game.player.Ranura;
+
 import java.util.List;
 
 public class GameScreen implements Screen {
@@ -133,24 +139,21 @@ public class GameScreen implements Screen {
         if (currentMapInfo == null) return;
 
         float margin = tileWidth * 0.5f;
-        float playerLeft = player.x - player.width/2;
-        float playerRight = player.x + player.width/2;
-        float playerBottom = player.y - player.height/2;
-        float playerTop = player.y + player.height/2;
+        float playerLeft = player.x - player.width / 2;
+        float playerRight = player.x + player.width / 2;
+        float playerBottom = player.y - player.height / 2;
+        float playerTop = player.y + player.height / 2;
 
         if (playerTop >= worldHeightPx - margin && currentMapInfo.northMap != null) {
             transitionToMap(currentMapInfo.northMap, player.x, tileHeight * 2);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
-        }
-        else if (playerBottom <= margin && currentMapInfo.southMap != null) {
+        } else if (playerBottom <= margin && currentMapInfo.southMap != null) {
             transitionToMap(currentMapInfo.southMap, player.x, worldHeightPx - tileHeight * 3);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
-        }
-        else if (playerRight >= worldWidthPx - margin && currentMapInfo.eastMap != null) {
+        } else if (playerRight >= worldWidthPx - margin && currentMapInfo.eastMap != null) {
             transitionToMap(currentMapInfo.eastMap, tileWidth * 2, player.y);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
-        }
-        else if (playerLeft <= margin && currentMapInfo.westMap != null) {
+        } else if (playerLeft <= margin && currentMapInfo.westMap != null) {
             transitionToMap(currentMapInfo.westMap, worldWidthPx - tileWidth * 3, player.y);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
@@ -182,23 +185,44 @@ public class GameScreen implements Screen {
     }
 
     public boolean isCollision(float x, float y) {
-        if (x < 0 || x >= worldWidthPx || y < 0 || y >= worldHeightPx) {
-            return true;
+        return isCollisionRect(x, y, 0, 0); // Para compatibilidad
+    }
+
+    // NUEVO MÉTODO: Verifica colisión con el rectángulo completo del jugador
+    public boolean isCollisionRect(float centerX, float centerY, float width, float height) {
+        // Usar un rectángulo más pequeño (70% del tamaño original)
+        float collisionWidth = width * 0.7f;
+        float collisionHeight = height * 0.7f;
+
+        // Calcular los bordes del rectángulo de colisión
+        float left = centerX - collisionWidth/2;
+        float right = centerX + collisionWidth/2;
+        float bottom = centerY - collisionHeight/2;
+        float top = centerY + collisionHeight/2;
+
+        // Convertir a celdas de tiles
+        int leftTile = (int) (left / tileWidth);
+        int rightTile = (int) (right / tileWidth);
+        int bottomTile = (int) (bottom / tileHeight);
+        int topTile = (int) (top / tileHeight);
+
+        // Verificar todas las celdas dentro del área del jugador
+        for (int tileX = leftTile; tileX <= rightTile; tileX++) {
+            for (int tileY = bottomTile; tileY <= topTile; tileY++) {
+                if (tileX < 0 || tileX >= mapWidth || tileY < 0 || tileY >= mapHeight) {
+                    return true;
+                }
+
+                if (collisionLayer != null) {
+                    TiledMapTileLayer.Cell cell = collisionLayer.getCell(tileX, tileY);
+                    if (cell != null && cell.getTile() != null) {
+                        return true;
+                    }
+                }
+            }
         }
 
-        int tileX = (int) (x / tileWidth);
-        int tileY = (int) (y / tileHeight);
-
-        if (tileX < 0 || tileX >= mapWidth || tileY < 0 || tileY >= mapHeight) {
-            return true;
-        }
-
-        if (collisionLayer == null) {
-            return false;
-        }
-
-        TiledMapTileLayer.Cell cell = collisionLayer.getCell(tileX, tileY);
-        return cell != null && cell.getTile() != null;
+        return false;
     }
 
     @Override
@@ -229,8 +253,8 @@ public class GameScreen implements Screen {
         spriteBatch.setProjectionMatrix(camara.combined);
         spriteBatch.begin();
         spriteBatch.draw(player.currentFrame,
-            player.x - player.width/2,
-            player.y - player.height/2,
+            player.x - player.width / 2,
+            player.y - player.height / 2,
             player.width,
             player.height);
         spriteBatch.end();
@@ -262,21 +286,43 @@ public class GameScreen implements Screen {
             player.goBack();
         }
 
+        // Manejo de entrada según el estado del menú
         if (player.getMenuState() != MenuState.NONE) {
-            // Flechas para navegar (ya lo tienes)
-            if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
-                player.moveMenuUp();
+            // PRIMERO: Manejo específico para CRAFTING
+            if (player.getMenuState() == MenuState.CRAFTING) {
+                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                    player.moverSeleccionCrafteoArriba();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                    player.moverSeleccionCrafteoAbajo();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                    boolean exito = player.intentarCraftear();
+                    if (exito) {
+                        System.out.println("¡Ítem crafteado con éxito!");
+                    } else {
+                        System.out.println("No tienes los materiales necesarios.");
+                    }
+                }
             }
-            if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
-                player.moveMenuDown();
+            // SEGUNDO: Manejo para otros menús
+            else {
+                // Flechas para navegar (para todos los menús excepto CRAFTING)
+                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                    player.moveMenuUp();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                    player.moveMenuDown();
+                }
+
+                // Enter para seleccionar
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                    player.selectMenuItem();
+                }
             }
 
-            // Enter para seleccionar
-            if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-                player.selectMenuItem();
-            }
-
-            // AÑADIR ESTO: Teclas numéricas SOLO cuando estamos en inventario con item seleccionado
+            // TERCERO: Manejo específico para INVENTORY con item seleccionado
+            // (esto es independiente, puede coexistir con la navegación)
             if (player.getMenuState() == MenuState.INVENTORY && player.getItemSeleccionado() != null) {
                 if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
                     player.usarItemSeleccionado();
@@ -443,8 +489,7 @@ public class GameScreen implements Screen {
                 font.setColor(Color.CYAN);
                 font.draw(spriteBatch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
                 font.setColor(Color.WHITE);
-            }
-            else {
+            } else {
                 font.draw(spriteBatch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
             }
         }
@@ -468,6 +513,195 @@ public class GameScreen implements Screen {
         font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
     }
 
+    private void dibujarCrafteo(int screenWidth, int screenHeight) {
+        font.getData().setScale(2.0f);
+        String titulo = "SISTEMA DE CRAFTEO";
+        float tituloWidth = font.getData().scaleX * titulo.length() * 10;
+        font.draw(spriteBatch, titulo, (screenWidth - tituloWidth) / 2, screenHeight - 40);
+        font.getData().setScale(1.0f);
+
+        // Obtener recetas disponibles
+        List<Crafteo.Receta> recetas = player.getSistemaCrafteo().getRecetasDisponibles();
+        int seleccion = player.getSeleccionCrafteo();
+
+        // Dimensiones del panel principal - CENTRADO
+        float panelAncho = screenWidth * 0.75f;  // Más angosto para mejor centrado
+        float panelAlto = screenHeight * 0.7f;   // Reducido en altura
+        float panelX = (screenWidth - panelAncho) / 2;  // Centrado horizontal
+        float panelY = screenHeight * 0.15f;  // Más centrado verticalmente (25% desde arriba)
+
+        // Fondo negro para todo el panel - REDUCIDO BORDE SUPERIOR
+        spriteBatch.setColor(0.0f, 0.0f, 0.0f, 0.85f);
+        spriteBatch.draw(whitePixel, panelX, panelY, panelAncho, panelAlto);
+        spriteBatch.setColor(Color.WHITE);
+
+        // Bordes del panel - AJUSTADOS
+        spriteBatch.setColor(0.5f, 0.5f, 0.5f, 1.0f);
+        // Bordes horizontales
+        spriteBatch.draw(whitePixel, panelX, panelY, panelAncho, 2);
+        spriteBatch.draw(whitePixel, panelX, panelY + panelAlto, panelAncho, 2);
+        // Bordes verticales
+        spriteBatch.draw(whitePixel, panelX, panelY, 2, panelAlto);
+        spriteBatch.draw(whitePixel, panelX + panelAncho - 2, panelY, 2, panelAlto);
+        spriteBatch.setColor(Color.WHITE);
+
+        // COLUMNAS dentro del panel
+        float columnaDetallesX = panelX + 20;  // Izquierda: detalles de la receta
+        float columnaRecetasX = panelX + panelAncho * 0.55f;  // Derecha: lista de recetas
+
+        // CONTADOR DE RECETAS - ESQUINA SUPERIOR DERECHA DEL CUADRO NEGRO
+        font.setColor(Color.YELLOW);
+        font.getData().setScale(0.9f);
+        String contador = String.format("Recetas: %d/%d", seleccion + 1, recetas.size());
+        float contadorX = panelX + panelAncho - 20;  // 20px desde el borde derecho
+        float contadorY = panelY + panelAlto - 25;   // 25px desde el borde superior del cuadro
+        font.draw(spriteBatch, contador, contadorX - (contador.length() * 6), contadorY);
+        font.getData().setScale(1.0f);
+
+        // Título "RECETAS DISPONIBLES" - dentro del cuadro negro, columna derecha
+        float recetaY = panelY + panelAlto - 50;  // Bajado para dejar espacio al contador
+        font.setColor(Color.CYAN);
+        font.draw(spriteBatch, "RECETAS DISPONIBLES:", columnaRecetasX, recetaY);
+        recetaY -= 25;
+
+        // Dibujar lista de recetas (máximo 6 para evitar superposición)
+        int maxRecetasPorPantalla = 6;
+        int inicioRecetas = 0;
+
+        if (recetas.size() > maxRecetasPorPantalla && seleccion >= maxRecetasPorPantalla) {
+            inicioRecetas = seleccion - maxRecetasPorPantalla + 1;
+        }
+
+        float espacioRecetas = 30;
+
+        for (int i = inicioRecetas; i < Math.min(inicioRecetas + maxRecetasPorPantalla, recetas.size()); i++) {
+            Crafteo.Receta receta = recetas.get(i);
+            float y = recetaY - (i - inicioRecetas) * espacioRecetas;
+
+            if (y < panelY + 20) break; // No dibujar muy abajo
+
+            boolean puedeCraftear = player.getSistemaCrafteo().puedeCraftear(receta.id);
+            boolean esSeleccionada = (i == seleccion);
+
+            if (esSeleccionada) {
+                // Fondo para la receta seleccionada
+                spriteBatch.setColor(0.4f, 0.4f, 0.1f, 0.8f);
+                spriteBatch.draw(whitePixel, columnaRecetasX - 10, y - 20, panelAncho * 0.4f, 25);
+                spriteBatch.setColor(Color.WHITE);
+
+                // Borde para la receta seleccionada
+                spriteBatch.setColor(0.8f, 0.8f, 0.0f, 1.0f);
+                spriteBatch.draw(whitePixel, columnaRecetasX - 11, y - 21, panelAncho * 0.4f + 1, 1);
+                spriteBatch.draw(whitePixel, columnaRecetasX - 11, y + 4, panelAncho * 0.4f + 1, 1);
+                spriteBatch.draw(whitePixel, columnaRecetasX - 11, y - 21, 1, 26);
+                spriteBatch.draw(whitePixel, columnaRecetasX + panelAncho * 0.4f - 10, y - 21, 1, 26);
+                spriteBatch.setColor(Color.WHITE);
+
+                font.setColor(puedeCraftear ? Color.YELLOW : Color.ORANGE);
+                font.draw(spriteBatch, "▶ " + receta.nombre, columnaRecetasX, y);
+            } else {
+                font.setColor(puedeCraftear ? Color.WHITE : Color.GRAY);
+                font.draw(spriteBatch, "• " + receta.nombre, columnaRecetasX, y);
+            }
+        }
+
+        // Dibujar detalles de la receta seleccionada (columna izquierda)
+        if (seleccion >= 0 && seleccion < recetas.size()) {
+            Crafteo.Receta recetaSeleccionada = recetas.get(seleccion);
+            boolean puedeCraftear = player.getSistemaCrafteo().puedeCraftear(recetaSeleccionada.id);
+
+            float detallesY = panelY + panelAlto - 50;
+
+            // Título de la receta
+            font.setColor(Color.YELLOW);
+            font.getData().setScale(1.2f);
+            font.draw(spriteBatch, recetaSeleccionada.nombre, columnaDetallesX, detallesY);
+            font.getData().setScale(1.0f);
+            detallesY -= 30;
+
+            // Descripción
+            font.setColor(Color.LIGHT_GRAY);
+            font.draw(spriteBatch, "Descripción:", columnaDetallesX, detallesY);
+            detallesY -= 20;
+
+            // Descripción en múltiples líneas
+            String[] palabras = recetaSeleccionada.descripcion.split(" ");
+            StringBuilder linea = new StringBuilder();
+            float lineaY = detallesY;
+
+            for (String palabra : palabras) {
+                if (linea.length() + palabra.length() > 35) {
+                    font.draw(spriteBatch, linea.toString(), columnaDetallesX, lineaY);
+                    linea = new StringBuilder(palabra + " ");
+                    lineaY -= 20;
+                } else {
+                    linea.append(palabra).append(" ");
+                }
+            }
+            if (linea.length() > 0) {
+                font.draw(spriteBatch, linea.toString(), columnaDetallesX, lineaY);
+            }
+            detallesY = lineaY - 30;
+
+            // Ingredientes necesarios
+            font.setColor(Color.CYAN);
+            font.draw(spriteBatch, "INGREDIENTES REQUERIDOS:", columnaDetallesX, detallesY);
+            detallesY -= 25;
+
+            // Lista de ingredientes
+            for (Crafteo.Ingrediente ingrediente : recetaSeleccionada.ingredientes) {
+                Ranura slot = player.getInventario().buscarItem(ingrediente.nombre);
+                int cantidadDisponible = (slot != null) ? slot.getCantidad() : 0;
+                boolean tieneSuficiente = cantidadDisponible >= ingrediente.cantidad;
+
+                font.setColor(tieneSuficiente ? Color.GREEN : Color.RED);
+                String textoIngrediente = String.format("  %s: %d/%d",
+                    ingrediente.nombre, cantidadDisponible, ingrediente.cantidad);
+
+                font.draw(spriteBatch, textoIngrediente, columnaDetallesX, detallesY);
+                detallesY -= 22;
+            }
+
+            // Estado de crafteo
+            detallesY -= 20;
+            font.getData().setScale(1.1f);
+            if (puedeCraftear) {
+                font.setColor(Color.GREEN);
+                font.draw(spriteBatch, "✓ LISTO PARA CRAFTEAR", columnaDetallesX, detallesY);
+            } else {
+                font.setColor(Color.RED);
+                font.draw(spriteBatch, "✗ MATERIALES INSUFICIENTES", columnaDetallesX, detallesY);
+            }
+            font.getData().setScale(1.0f);
+
+            // Resultado del crafteo
+            detallesY -= 35;
+            font.setColor(Color.YELLOW);
+            font.draw(spriteBatch, "RESULTADO:", columnaDetallesX, detallesY);
+            detallesY -= 20;
+            font.setColor(Color.WHITE);
+
+            switch(recetaSeleccionada.id) {
+                case 1:
+                    font.draw(spriteBatch, "• 1x Poké Ball", columnaDetallesX, detallesY);
+                    font.draw(spriteBatch, "  (Tasa captura: 1.0x)", columnaDetallesX + 10, detallesY - 18);
+                    break;
+                case 2:
+                    font.draw(spriteBatch, "• 1x Super Poké Ball", columnaDetallesX, detallesY);
+                    font.draw(spriteBatch, "  (Tasa captura: 2.0x)", columnaDetallesX + 10, detallesY - 18);
+                    break;
+                case 3:
+                    font.draw(spriteBatch, "• 1x Poción", columnaDetallesX, detallesY);
+                    font.draw(spriteBatch, "  (Cura 20 PS)", columnaDetallesX + 10, detallesY - 18);
+                    break;
+                case 4:
+                    font.draw(spriteBatch, "• 1x Poción Grande", columnaDetallesX, detallesY);
+                    font.draw(spriteBatch, "  (Cura 50 PS)", columnaDetallesX + 10, detallesY - 18);
+                    break;
+            }
+        }
+    }
+
     // Pokédex (placeholder)
     private void dibujarPokedex(int screenWidth, int screenHeight) {
         font.getData().setScale(2.0f);
@@ -475,16 +709,6 @@ public class GameScreen implements Screen {
         font.getData().setScale(1.0f);
 
         font.draw(spriteBatch, "Registro de Pokémon investigados", screenWidth / 2 - 140, screenHeight / 2);
-        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
-    }
-
-    // Crafteo (placeholder)
-    private void dibujarCrafteo(int screenWidth, int screenHeight) {
-        font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "CRAFTEO", screenWidth / 2 - 60, screenHeight - 100);
-        font.getData().setScale(1.0f);
-
-        font.draw(spriteBatch, "Crear objetos a partir de recursos", screenWidth / 2 - 150, screenHeight / 2);
         font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
     }
 
@@ -574,8 +798,11 @@ public class GameScreen implements Screen {
             case INVENTORY:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar item | 1/2/3: Acciones | ESC: Volver";
                 break;
+            case CRAFTING:
+                instrucciones = "Flechas ↑↓: Navegar recetas | Enter: Craftear | ESC: Volver al menú principal";
+                break;
             case OPTIONS:
-                instrucciones = "Flechas: Navegar opciones | Enter: Seleccionar | ESC: Volver al menú principal"; // ← Fijo
+                instrucciones = "Flechas: Navegar opciones | Enter: Seleccionar | ESC: Volver al menú principal";
                 break;
             default:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC: Volver";

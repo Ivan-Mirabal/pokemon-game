@@ -1,4 +1,4 @@
-package com.pokemon.game;
+package com.pokemon.game.player;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
@@ -6,7 +6,13 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
-import java.util.ArrayList;
+import com.pokemon.game.*;
+import com.pokemon.game.game.GameScreen;
+import com.pokemon.game.item.Crafteo;
+import com.pokemon.game.item.Curacion;
+import com.pokemon.game.item.Pokeball;
+import com.pokemon.game.item.Recurso;
+
 import java.util.List;
 
 public class Player {
@@ -42,6 +48,9 @@ public class Player {
     // Variables del Inventario
     private Inventario inventario;
 
+    private int paginaCrafteo = 0;
+    private final int RECETAS_POR_PAGINA = 8;
+
     // Variables del Menú
     private MenuState menuState;
     private int menuSelection;
@@ -51,6 +60,9 @@ public class Player {
     private Ranura itemSeleccionado = null;
     private int inventarioPage = 0;
     private final int ITEMS_PER_PAGE = 10;
+
+    private Crafteo sistemaCrafteo;
+    private int seleccionCrafteo;
 
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
         this.x = startX;
@@ -89,11 +101,18 @@ public class Player {
         // CORRECCIÓN: Usar nombres consistentes
         // "Poké Ball" con tilde y espacio (como se busca en GameScreen)
 
-        inventario.agregarItem(new Pokeball(), 5); // Pokeball se llama "Poké Ball" internamente
+        inventario.agregarItem(new Pokeball(), 5);
         inventario.agregarItem(new Curacion("Poción", 20), 3);
         inventario.agregarItem(new Recurso("Planta", "Planta"), 5);
         inventario.agregarItem(new Recurso("Guijarro", "Guijarro"), 8);
         inventario.agregarItem(new Recurso("Baya", "Baya"), 3);
+
+        // AÑADIR METAL PARA PODER CRAFTEAR
+        inventario.agregarItem(new Recurso("Metal", "Metal"), 5);
+
+        this.sistemaCrafteo = new Crafteo(inventario);
+        this.seleccionCrafteo = 0;
+
     }
 
     @SuppressWarnings("unchecked")
@@ -144,8 +163,8 @@ public class Player {
             isMoving = true;
         }
 
-        // Verificar colisión
-        if (gameScreen.isCollision(x, y)) {
+        // Verificar colisión CON EL RECTÁNGULO COMPLETO DEL JUGADOR (no solo el centro)
+        if (gameScreen.isCollisionRect(x, y, width, height)) {
             x = prevX;
             y = prevY;
             isMoving = false; // Detener animación si hay colisión
@@ -278,6 +297,7 @@ public class Player {
         }
     }
 
+    // En el método handleMainMenuSelection() de Player.java:
     private void handleMainMenuSelection() {
         switch (menuSelection) {
             case 0: // Pokémon
@@ -291,13 +311,14 @@ public class Player {
                 break;
             case 3: // Crafteo
                 setMenuState(MenuState.CRAFTING);
+                seleccionCrafteo = 0; // Resetear selección de crafteo
                 break;
             case 4: // Guardar partida
                 setMenuState(MenuState.SAVE);
                 break;
             case 5: // Opciones
                 setMenuState(MenuState.OPTIONS);
-                menuSelection = 0; // ← ¡IMPORTANTE! Resetear a la primera opción
+                menuSelection = 0;
                 break;
         }
     }
@@ -340,4 +361,55 @@ public class Player {
     public void dispose() {
         spriteSheet.dispose();
     }
+
+    public Crafteo getSistemaCrafteo() {
+        return sistemaCrafteo;
+    }
+
+    public int getSeleccionCrafteo() {
+        return seleccionCrafteo;
+    }
+
+    public void setSeleccionCrafteo(int seleccion) {
+        this.seleccionCrafteo = seleccion;
+    }
+
+    public void moverSeleccionCrafteoArriba() {
+        seleccionCrafteo--;
+        if (seleccionCrafteo < 0) {
+            seleccionCrafteo = sistemaCrafteo.getCantidadRecetas() - 1;
+        }
+    }
+
+    public int getPaginaCrafteo() {
+        return paginaCrafteo;
+    }
+
+    public void setPaginaCrafteo(int pagina) {
+        this.paginaCrafteo = pagina;
+    }
+
+    public void siguientePaginaCrafteo() {
+        int totalPaginas = (int) Math.ceil(sistemaCrafteo.getCantidadRecetas() / (float) RECETAS_POR_PAGINA);
+        paginaCrafteo = (paginaCrafteo + 1) % totalPaginas;
+        seleccionCrafteo = paginaCrafteo * RECETAS_POR_PAGINA;
+    }
+
+    public void anteriorPaginaCrafteo() {
+        int totalPaginas = (int) Math.ceil(sistemaCrafteo.getCantidadRecetas() / (float) RECETAS_POR_PAGINA);
+        paginaCrafteo = (paginaCrafteo - 1 + totalPaginas) % totalPaginas;
+        seleccionCrafteo = paginaCrafteo * RECETAS_POR_PAGINA;
+    }
+
+    public void moverSeleccionCrafteoAbajo() {
+        seleccionCrafteo++;
+        if (seleccionCrafteo >= sistemaCrafteo.getCantidadRecetas()) {
+            seleccionCrafteo = 0;
+        }
+    }
+
+    public boolean intentarCraftear() {
+        return sistemaCrafteo.crearItem(seleccionCrafteo + 1); // +1 porque IDs empiezan en 1
+    }
+
 }

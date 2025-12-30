@@ -1,4 +1,6 @@
-package com.pokemon.game;
+package com.pokemon.game.player;
+
+import com.pokemon.game.item.Item;
 
 import java.util.ArrayList;
 import java.util.List;

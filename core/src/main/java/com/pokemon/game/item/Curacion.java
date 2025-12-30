@@ -1,6 +1,5 @@
-package com.pokemon.game;
+package com.pokemon.game.item;
 
-// Curacion.java
 public class Curacion extends Item {
     private int hpRestaurado;
 
@@ -12,6 +11,10 @@ public class Curacion extends Item {
     @Override
     public void usar() {
         System.out.println("Usaste " + nombre + " y restauraste " + hpRestaurado + " PS");
-        // Lógica de curación, NO manejo de cantidad
+    }
+
+    // AÑADIR GETTER
+    public int getHpRestaurado() {
+        return hpRestaurado;
     }
 }

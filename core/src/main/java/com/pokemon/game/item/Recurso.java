@@ -1,4 +1,4 @@
-package com.pokemon.game;
+package com.pokemon.game.item;
 
 public class Recurso extends Item {
     private String tipo; // "Planta", "Guijarro", "Baya"
