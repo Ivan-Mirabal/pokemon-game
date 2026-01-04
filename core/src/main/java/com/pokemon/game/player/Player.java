@@ -8,10 +8,10 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.pokemon.game.*;
 import com.pokemon.game.game.GameScreen;
-import com.pokemon.game.item.Crafteo;
-import com.pokemon.game.item.Curacion;
-import com.pokemon.game.item.Pokeball;
-import com.pokemon.game.item.Recurso;
+import com.pokemon.game.item.*;
+import com.pokemon.game.pokemon.Entrenador;
+import com.pokemon.game.pokemon.FabricaPokemon;
+import com.pokemon.game.pokemon.PokemonJugador;
 
 import java.util.List;
 
@@ -64,6 +64,13 @@ public class Player {
     private Crafteo sistemaCrafteo;
     private int seleccionCrafteo;
 
+    // Para navegación en equipo (2 columnas)
+    private int pokemonTeamSelection = 0;
+    private int pokemonDetailTab = 0; // 0: Estadísticas, 1: Movimientos, 2: Naturaleza, 3: Encontrado
+
+    private Entrenador entrenador;
+
+
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
         this.x = startX;
         this.y = startY;
@@ -93,13 +100,23 @@ public class Player {
         // INICIALIZAR INVENTARIO (AHORA 50 ÍTEMS TOTALES)
         this.inventario = new Inventario(50);
 
+        this.entrenador = new Entrenador("Ash", inventario);
+
+        // Dar Pokémon inicial (ejemplo: Pikachu nivel 5)
+        PokemonJugador inicial = FabricaPokemon.crearPokemonJugador("Pikachu", 5, "Pika");
+        entrenador.agregarPokemon(inicial);
+        PokemonJugador bulbasaur = FabricaPokemon.crearPokemonJugador("Bulbasaur", 8, "Bulby");
+        entrenador.agregarPokemon(bulbasaur);
+
+        PokemonJugador squirtle = FabricaPokemon.crearPokemonJugador("Squirtle", 7, "Squirty");
+        entrenador.agregarPokemon(squirtle);
+
         // INICIALIZAR ESTADO DEL MENÚ
         this.menuState = MenuState.NONE;
         this.menuSelection = 0;
         this.inSubMenu = false;
 
         // CORRECCIÓN: Usar nombres consistentes
-        // "Poké Ball" con tilde y espacio (como se busca en GameScreen)
 
         inventario.agregarItem(new Pokeball(), 5);
         inventario.agregarItem(new Curacion("Poción", 20), 3);
@@ -183,9 +200,13 @@ public class Player {
         }
     }
 
+    public Entrenador getEntrenador() {
+        return entrenador;
+    }
+
     // MÉTODOS DEL INVENTARIO
     public Inventario getInventario() {
-        return inventario;
+        return entrenador.getInventario();
     }
 
     public boolean recolectarRecurso(Recurso recurso) {
@@ -204,6 +225,22 @@ public class Player {
             return true;
         }
         return false;
+    }
+
+    public boolean tienePokeball(String tipoPokeball) {
+        Ranura slot = inventario.buscarItem(tipoPokeball);
+        return slot != null && slot.getCantidad() > 0;
+    }
+
+    public Pokeball obtenerPokeball(String tipoPokeball) {
+        Ranura slot = inventario.buscarItem(tipoPokeball);
+        if (slot != null && slot.getCantidad() > 0) {
+            Item item = slot.getItem();
+            if (item instanceof Pokeball) {
+                return (Pokeball) item;
+            }
+        }
+        return null;
     }
 
     // MÉTODOS DEL MENÚ
@@ -301,7 +338,7 @@ public class Player {
     private void handleMainMenuSelection() {
         switch (menuSelection) {
             case 0: // Pokémon
-                setMenuState(MenuState.POKEMON);
+                setMenuState(MenuState.POKEMON_TEAM);
                 break;
             case 1: // Pokédex
                 setMenuState(MenuState.POKEDEX);
@@ -411,5 +448,145 @@ public class Player {
     public boolean intentarCraftear() {
         return sistemaCrafteo.crearItem(seleccionCrafteo + 1); // +1 porque IDs empiezan en 1
     }
+
+    // Método para curar Pokémon seleccionado
+    public boolean curarPokemonSeleccionado() {
+        if (getEntrenador().getEquipo().isEmpty()) return false;
+
+        // ❌ ANTES: Usaba pokemonMenuSelection
+        // PokemonJugador pokemon = getEntrenador().getEquipo().get(pokemonMenuSelection);
+
+        // ✅ AHORA: Usa el método getPokemonSeleccionado() que ya corregiste
+        PokemonJugador pokemon = getPokemonSeleccionado();  // ¡Esto usa pokemonTeamSelection!
+
+        if (pokemon == null) return false;
+
+        // Verificar si tiene Pociones en inventario
+        Ranura pociones = getInventario().buscarItem("Poción");
+        if (pociones != null && pociones.getCantidad() > 0) {
+            pokemon.curar(20); // Poción cura 20 PS
+            pociones.usarCantidad(1);
+            System.out.println("Has usado una Poción en " + pokemon.getApodo());
+            return true;
+        } else {
+            System.out.println("¡No tienes Pociones!");
+            return false;
+        }
+    }
+
+    // Método para cambiar apodo
+    public void cambiarApodoPokemon(String nuevoApodo) {
+        if (getEntrenador().getEquipo().isEmpty()) return;
+
+        // ❌ ANTES: Usaba pokemonMenuSelection
+        // PokemonJugador pokemon = getEntrenador().getEquipo().get(pokemonMenuSelection);
+
+        // ✅ AHORA: Usa el método getPokemonSeleccionado() que ya corregiste
+        PokemonJugador pokemon = getPokemonSeleccionado();  // ¡Esto usa pokemonTeamSelection!
+
+        if (pokemon == null) return;
+
+        pokemon.setApodo(nuevoApodo);
+        System.out.println("¡Ahora " + pokemon.getNombre() + " se llama " + nuevoApodo + "!");
+    }
+
+    // Método para seleccionar Pokémon en menú
+    // Método para seleccionar Pokémon en menú - YA ESTÁ CORRECTO
+    public PokemonJugador getPokemonSeleccionado() {
+        List<PokemonJugador> equipo = getEntrenador().getEquipo();
+        if (equipo.isEmpty()) return null;
+
+        // Usar pokemonTeamSelection, que es la ÚNICA variable de selección
+        int indice = pokemonTeamSelection;
+
+        // Asegurar que el índice esté dentro del equipo
+        if (indice >= equipo.size()) {
+            // Si seleccionas un slot vacío, ir al último Pokémon disponible
+            indice = equipo.size() - 1;
+        }
+
+        return equipo.get(indice);
+    }
+
+    // Método auxiliar (privado)
+    private boolean slotTienePokemon(int indice) {
+        return indice < getEntrenador().getEquipo().size();
+    }
+
+    // Métodos de navegación mejorados
+    public void movePokemonTeamUp() {
+        int equipoSize = getEntrenador().getEquipo().size();
+        if (equipoSize <= 1) return;
+
+        int columna = pokemonTeamSelection % 2;
+        int filaActual = pokemonTeamSelection / 2;
+
+        // Buscar hacia arriba en la misma columna
+        for (int f = filaActual - 1; f >= 0; f--) {
+            int candidato = (f * 2) + columna;
+            if (slotTienePokemon(candidato)) {
+                pokemonTeamSelection = candidato;
+                return;
+            }
+        }
+    }
+
+    public void movePokemonTeamDown() {
+        int equipoSize = getEntrenador().getEquipo().size();
+        if (equipoSize <= 1) return;
+
+        int columna = pokemonTeamSelection % 2;
+        int filaActual = pokemonTeamSelection / 2;
+
+        // Buscar hacia abajo en la misma columna
+        for (int f = filaActual + 1; f <= 2; f++) {
+            int candidato = (f * 2) + columna;
+            if (candidato < 6 && slotTienePokemon(candidato)) {
+                pokemonTeamSelection = candidato;
+                return;
+            }
+        }
+    }
+
+    public void movePokemonTeamLeft() {
+        int equipoSize = getEntrenador().getEquipo().size();
+        if (equipoSize <= 1) return;
+
+        // Solo mover si está en columna derecha
+        if (pokemonTeamSelection % 2 == 1) {
+            int candidato = pokemonTeamSelection - 1;
+            if (slotTienePokemon(candidato)) {
+                pokemonTeamSelection = candidato;
+            }
+        }
+    }
+
+    public void movePokemonTeamRight() {
+        int equipoSize = getEntrenador().getEquipo().size();
+        if (equipoSize <= 1) return;
+
+        // Solo mover si está en columna izquierda y no es el último slot
+        if (pokemonTeamSelection % 2 == 0 && pokemonTeamSelection < 5) {
+            int candidato = pokemonTeamSelection + 1;
+            if (slotTienePokemon(candidato)) {
+                pokemonTeamSelection = candidato;
+            }
+        }
+    }
+
+    // Para cambiar pestañas en vista detalle
+    public void nextPokemonDetailTab() {
+        pokemonDetailTab = (pokemonDetailTab + 1) % 4;
+    }
+
+    public void prevPokemonDetailTab() {
+        pokemonDetailTab = (pokemonDetailTab - 1 + 4) % 4;
+    }
+
+    // Getters
+    public int getPokemonTeamSelection() { return pokemonTeamSelection; }
+    public int getPokemonDetailTab() { return pokemonDetailTab; }
+    public void setPokemonTeamSelection(int sel) { pokemonTeamSelection = sel; }
+    public void setPokemonDetailTab(int tab) { pokemonDetailTab = tab; }
 
 }

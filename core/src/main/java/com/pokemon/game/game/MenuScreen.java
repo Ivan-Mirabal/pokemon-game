@@ -229,6 +229,7 @@ public class MenuScreen implements Screen {
         selectedItem = 0;
         logoScale = 1.0f;
         logoPulseTimer = 0f;
+        game.musics.startmenumusic();
     }
 
     @Override

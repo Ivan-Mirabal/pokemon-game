@@ -16,9 +16,14 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pokemon.game.*;
 import com.pokemon.game.item.Crafteo;
+import com.pokemon.game.item.Item;
+import com.pokemon.game.item.Pokeball;
 import com.pokemon.game.player.Inventario;
 import com.pokemon.game.player.Player;
 import com.pokemon.game.player.Ranura;
+import com.pokemon.game.pokemon.*;
+
+import java.util.HashMap;
 
 import java.util.List;
 
@@ -56,6 +61,8 @@ public class GameScreen implements Screen {
     private String initialMap;
     private float startX, startY;
 
+    private HashMap<String, Texture> pokemonSprites;
+
     // Cooldown para evitar transiciones infinitas
     private float transitionCooldown = 0f;
     private static final float TRANSITION_COOLDOWN_TIME = 0.3f;
@@ -63,6 +70,10 @@ public class GameScreen implements Screen {
     // Variables para el Menú
     private BitmapFont font;
     private Texture whitePixel;
+
+    private Combate combateActivo;
+    private boolean enCombate;
+    private Pokemon pokemonSalvajeActual;
 
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY) {
         this.game = game;
@@ -74,6 +85,9 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         loadMap(initialMap, startX, startY);
+        game.musics.stopmenumusic();
+        game.musics.startopenworldmusic();
+        cargarSpritesPokemon();
 
         // Inicializar fuente
         font = new BitmapFont();
@@ -225,21 +239,42 @@ public class GameScreen implements Screen {
         return false;
     }
 
+    private void cargarSpritesPokemon() {
+        pokemonSprites = new HashMap<>();
+        String[] nombresPokemon = {"pikachu", "bulbasaur", "squirtle", "charmander", "charizard"};
+
+        for (String nombre : nombresPokemon) {
+            try {
+                Texture sprite = new Texture(Gdx.files.internal("sprites/pokemon/" + nombre + ".png"));
+                pokemonSprites.put(nombre, sprite);
+                System.out.println("Sprite precargado: " + nombre);
+            } catch (Exception e) {
+                System.out.println("No se pudo cargar sprite para: " + nombre);
+                // El placeholder se creará en PokemonJugador
+            }
+        }
+    }
+
     @Override
     public void render(float delta) {
-        // Actualizar cooldown
+        // 1. Actualizar cooldown
         if (transitionCooldown > 0) {
             transitionCooldown -= delta;
         }
 
-        // 1. Manejo de teclas
-        handleInput();
+        // 2. Si hay combate activo, manejar combate
+        if (enCombate && combateActivo != null) {
+            manejarCombate(delta);
+        } else {
+            // 3. Si NO hay combate, manejar entrada normal
+            handleInput();
 
-        // 2. Lógica del juego (solo si NO hay menú abierto)
-        if (player.getMenuState() == MenuState.NONE) {
-            player.update(delta);
-            checkMapTransition();
-            updateCamera();
+            // 4. Lógica del juego (solo si NO hay menú abierto)
+            if (player.getMenuState() == MenuState.NONE) {
+                player.update(delta);
+                checkMapTransition();
+                updateCamera();
+            }
         }
 
         // 3. Limpiar pantalla
@@ -272,69 +307,127 @@ public class GameScreen implements Screen {
 
     // Manejar entrada del teclado
     private void handleInput() {
-        // Tecla I para abrir/cerrar menú principal
-        if (Gdx.input.isKeyJustPressed(Keys.I)) {
-            if (player.getMenuState() == MenuState.NONE) {
-                player.setMenuState(MenuState.MAIN);
-            } else {
-                player.setMenuState(MenuState.NONE);
+
+        if (enCombate && combateActivo != null) {
+            manejarEntradaCombate();
+        } else {
+            // Tecla I para abrir/cerrar menú principal
+            if (Gdx.input.isKeyJustPressed(Keys.I)) {
+                if (player.getMenuState() == MenuState.NONE) {
+                    game.musics.stopopenworldmusic();
+                    game.musics.startpausemusic();
+                    player.setMenuState(MenuState.MAIN);
+                } else {
+                    player.setMenuState(MenuState.NONE);
+                    game.musics.stoppausemusic();
+                    game.musics.startopenworldmusic();
+                }
             }
-        }
 
-        // Tecla ESC para retroceder
-        if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
-            player.goBack();
-        }
+            // Tecla ESC para retroceder
+            if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+                player.goBack();
+                if(player.getMenuState()== MenuState.NONE){
+                    game.musics.stoppausemusic();
+                    game.musics.startopenworldmusic();
+                }
+            }
 
-        // Manejo de entrada según el estado del menú
-        if (player.getMenuState() != MenuState.NONE) {
-            // PRIMERO: Manejo específico para CRAFTING
-            if (player.getMenuState() == MenuState.CRAFTING) {
-                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
-                    player.moverSeleccionCrafteoArriba();
-                }
-                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
-                    player.moverSeleccionCrafteoAbajo();
-                }
-                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-                    boolean exito = player.intentarCraftear();
-                    if (exito) {
-                        System.out.println("¡Ítem crafteado con éxito!");
-                    } else {
-                        System.out.println("No tienes los materiales necesarios.");
+
+
+            // Manejo de entrada según el estado del menú
+            if (player.getMenuState() != MenuState.NONE) {
+                // PRIMERO: Manejo específico para CRAFTING
+                if (player.getMenuState() == MenuState.CRAFTING) {
+                    if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                        player.moverSeleccionCrafteoArriba();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                        player.moverSeleccionCrafteoAbajo();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                        boolean exito = player.intentarCraftear();
+                        if (exito) {
+                            System.out.println("¡Ítem crafteado con éxito!");
+                        } else {
+                            System.out.println("No tienes los materiales necesarios.");
+                        }
                     }
                 }
-            }
-            // SEGUNDO: Manejo para otros menús
-            else {
-                // Flechas para navegar (para todos los menús excepto CRAFTING)
-                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
-                    player.moveMenuUp();
-                }
-                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
-                    player.moveMenuDown();
+                if (player.getMenuState() == MenuState.POKEMON_TEAM) {
+                    // Navegación en equipo (2 columnas)
+                    if (Gdx.input.isKeyJustPressed(Keys.UP)) {
+                        player.movePokemonTeamUp();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
+                        player.movePokemonTeamDown();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                        player.movePokemonTeamLeft();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                        player.movePokemonTeamRight();
+                    }
+
+                    // A (o ENTER) para ver detalles
+                    if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.A)) {
+                        if (player.getPokemonSeleccionado() != null) {
+                            player.setMenuState(MenuState.POKEMON_DETAIL);
+                            player.setPokemonDetailTab(0); // Empezar en primera pestaña
+                        }
+                    }
+
+                    // B (o ESC) para volver al menú principal
+                    if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                        player.setMenuState(MenuState.MAIN);
+                    }
                 }
 
-                // Enter para seleccionar
-                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-                    player.selectMenuItem();
-                }
-            }
+                if (player.getMenuState() == MenuState.POKEMON_DETAIL) {
+                    // ←→ para cambiar pestañas
+                    if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                        player.prevPokemonDetailTab();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                        player.nextPokemonDetailTab();
+                    }
 
-            // TERCERO: Manejo específico para INVENTORY con item seleccionado
-            // (esto es independiente, puede coexistir con la navegación)
-            if (player.getMenuState() == MenuState.INVENTORY && player.getItemSeleccionado() != null) {
-                if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
-                    player.usarItemSeleccionado();
-                    player.cancelarSeleccionItem();
+                    // B (o ESC) para volver al equipo
+                    if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                        player.setMenuState(MenuState.POKEMON_TEAM);
+                    }
                 }
-                if (Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
-                    player.tirarItemSeleccionado();
-                    player.cancelarSeleccionItem();
+                // SEGUNDO: Manejo para otros menús
+                else {
+                    // Flechas para navegar (para todos los menús excepto CRAFTING)
+                    if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                        player.moveMenuUp();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                        player.moveMenuDown();
+                    }
+
+                    // Enter para seleccionar
+                    if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                        player.selectMenuItem();
+                    }
                 }
-                if (Gdx.input.isKeyJustPressed(Keys.NUM_3)) {
-                    player.cancelarSeleccionItem();
-                    System.out.println("Selección cancelada");
+
+                // TERCERO: Manejo específico para INVENTORY con item seleccionado
+                // (esto es independiente, puede coexistir con la navegación)
+                if (player.getMenuState() == MenuState.INVENTORY && player.getItemSeleccionado() != null) {
+                    if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
+                        player.usarItemSeleccionado();
+                        player.cancelarSeleccionItem();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
+                        player.tirarItemSeleccionado();
+                        player.cancelarSeleccionItem();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.NUM_3)) {
+                        player.cancelarSeleccionItem();
+                        System.out.println("Selección cancelada");
+                    }
                 }
             }
         }
@@ -346,10 +439,13 @@ public class GameScreen implements Screen {
         spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         spriteBatch.begin();
 
-        // Fondo semitransparente
-        spriteBatch.setColor(0, 0, 0, 0.7f);
-        spriteBatch.draw(whitePixel, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        spriteBatch.setColor(Color.WHITE);
+        // Fondo semitransparente SOLO si NO estamos en equipo/detalle Pokémon
+        if (player.getMenuState() != MenuState.POKEMON_TEAM &&
+            player.getMenuState() != MenuState.POKEMON_DETAIL) {
+            spriteBatch.setColor(0, 0, 0, 0.7f);
+            spriteBatch.draw(whitePixel, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            spriteBatch.setColor(Color.WHITE);
+        }
 
         int screenWidth = Gdx.graphics.getWidth();
         int screenHeight = Gdx.graphics.getHeight();
@@ -362,8 +458,13 @@ public class GameScreen implements Screen {
             case INVENTORY:
                 dibujarInventario(screenWidth, screenHeight);
                 break;
-            case POKEMON:
-                dibujarPokemon(screenWidth, screenHeight);
+            case POKEMON_TEAM:
+                dibujarEquipoPokemon(screenWidth, screenHeight);
+                // NO dibujar instrucciones generales aquí
+                break;
+            case POKEMON_DETAIL:
+                dibujarDetallePokemon(screenWidth, screenHeight);
+                // NO dibujar instrucciones generales aquí
                 break;
             case POKEDEX:
                 dibujarPokedex(screenWidth, screenHeight);
@@ -379,8 +480,12 @@ public class GameScreen implements Screen {
                 break;
         }
 
-        // Instrucciones generales
-        dibujarInstrucciones(screenWidth, screenHeight);
+        // Instrucciones generales SOLO para algunos menús
+        // NO para Pokémon Team/Detail
+        if (player.getMenuState() != MenuState.POKEMON_TEAM &&
+            player.getMenuState() != MenuState.POKEMON_DETAIL) {
+            dibujarInstrucciones(screenWidth, screenHeight);
+        }
 
         spriteBatch.end();
 
@@ -504,13 +609,656 @@ public class GameScreen implements Screen {
     }
 
     // Pokémon (placeholder)
-    private void dibujarPokemon(int screenWidth, int screenHeight) {
+    // ===============================
+// VISTA DE EQUIPO (2 COLUMNAS)
+// ===============================
+    private void dibujarEquipoPokemon(int screenWidth, int screenHeight) {
+        List<PokemonJugador> equipo = player.getEntrenador().getEquipo();
+
+        // 1. FONDO
+        spriteBatch.setColor(0.1f, 0.1f, 0.15f, 1);
+        spriteBatch.draw(whitePixel, 0, 0, 800, 600);
+        spriteBatch.setColor(Color.WHITE);
+
+        // 2. TÍTULO
+        font.getData().setScale(1.8f);
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
+        font.draw(spriteBatch, "EQUIPO POKÉMON", 250, 560);
+
+        // 3. LÍNEA DIVISORIA
+        spriteBatch.setColor(new Color(0.5f, 0.5f, 0.6f, 1));
+        spriteBatch.draw(whitePixel, 30, 530, 740, 2);
+        spriteBatch.setColor(Color.WHITE);
+
+        // 4. POSICIONES FIJAS PARA 6 SLOTS (2x3) - ORGANIZADAS POR FILAS
+        float[][] posiciones = {
+            // Fila 1 (arriba)
+            {50, 400},   // Slot 0: Izquierda - Pokémon 1
+            {410, 400},  // Slot 1: Derecha - Pokémon 2
+
+            // Fila 2 (medio)
+            {50, 270},   // Slot 2: Izquierda - Pokémon 3
+            {410, 270},  // Slot 3: Derecha - Pokémon 4
+
+            // Fila 3 (abajo)
+            {50, 140},   // Slot 4: Izquierda - Pokémon 5
+            {410, 140}   // Slot 5: Derecha - Pokémon 6
+        };
+
+        // Tamaño fijo de cada slot
+        float slotAncho = 340;
+        float slotAlto = 100;
+
+        // 5. DIBUJAR LOS 6 SLOTS
+        for (int i = 0; i < 6; i++) {
+            float x = posiciones[i][0];
+            float y = posiciones[i][1];
+
+            // Fondo del slot
+            if (i == player.getPokemonTeamSelection()) {
+                // Seleccionado - azul
+                spriteBatch.setColor(new Color(0.4f, 0.5f, 0.9f, 0.9f));
+            } else {
+                // No seleccionado - gris claro
+                spriteBatch.setColor(new Color(0.2f, 0.2f, 0.25f, 0.9f));
+            }
+            spriteBatch.draw(whitePixel, x, y, slotAncho, slotAlto);
+            spriteBatch.setColor(Color.WHITE);
+
+            // Borde del slot
+            spriteBatch.setColor(new Color(0.8f, 0.8f, 0.85f, 1));
+            spriteBatch.draw(whitePixel, x, y, slotAncho, 2); // Superior
+            spriteBatch.draw(whitePixel, x, y + slotAlto, slotAncho, 2); // Inferior
+            spriteBatch.draw(whitePixel, x, y, 2, slotAlto); // Izquierdo
+            spriteBatch.draw(whitePixel, x + slotAncho, y, 2, slotAlto); // Derecho
+            spriteBatch.setColor(Color.WHITE);
+
+            // 6. SI HAY POKÉMON EN ESTE SLOT
+            if (i < equipo.size()) {
+                PokemonJugador p = equipo.get(i);
+
+                // SPRITE DEL POKÉMON (NUEVO)
+                float spriteX = x + 10;
+                float spriteY = y + 10;
+                float spriteWidth = 80;
+                float spriteHeight = 80;
+
+                if (p.getSprite() != null) {
+                    spriteBatch.draw(p.getSprite(), spriteX, spriteY, spriteWidth, spriteHeight);
+                } else {
+                    // Placeholder si no hay sprite
+                    spriteBatch.setColor(getColorPorTipo(p.getTipoPrimario()));
+                    spriteBatch.draw(whitePixel, spriteX, spriteY, spriteWidth, spriteHeight);
+                    spriteBatch.setColor(Color.WHITE);
+                }
+
+                // Nombre (ajustado si es muy largo) - movido a la derecha del sprite
+                font.getData().setScale(1.2f);
+                if (i == player.getPokemonTeamSelection()) {
+                    font.setColor(new Color(0.0f, 0.2f, 0.6f, 1)); // Azul oscuro
+                } else {
+                    font.setColor(new Color(0.2f, 0.2f, 0.4f, 1)); // Gris azulado
+                }
+
+                String nombre = p.getApodo();
+                if (nombre.length() > 8) {
+                    nombre = nombre.substring(0, 8) + "...";
+                }
+                // Posición ajustada por el sprite
+                float nombreX = x + 100;
+                font.draw(spriteBatch, nombre, nombreX, y + 80);
+
+                // Nivel (derecha)
+                font.getData().setScale(1.0f);
+                font.draw(spriteBatch, "Nv. " + p.getNivel(), x + slotAncho - 70, y + 80);
+
+                // Barra de PS - ajustada por el sprite
+                float porcentajePS = (float)p.getPsActual() / p.getPsMaximos();
+                float barraAncho = 220;
+                float barraY = y + 55;
+
+                // Fondo barra
+                spriteBatch.setColor(new Color(0.85f, 0.85f, 0.9f, 1));
+                spriteBatch.draw(whitePixel, x + 100, barraY, barraAncho, 10);
+
+                // Color barra según PS
+                if (porcentajePS > 0.5) {
+                    spriteBatch.setColor(new Color(0.0f, 0.8f, 0.2f, 1));
+                } else if (porcentajePS > 0.2) {
+                    spriteBatch.setColor(new Color(1.0f, 0.8f, 0.0f, 1));
+                } else {
+                    spriteBatch.setColor(Color.RED);
+                }
+                spriteBatch.draw(whitePixel, x + 100, barraY, barraAncho * porcentajePS, 10);
+
+                // Texto PS (debajo de la barra)
+                spriteBatch.setColor(Color.WHITE);
+                font.getData().setScale(0.9f);
+                font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
+                String psTexto = p.getPsActual() + "/" + p.getPsMaximos();
+                font.draw(spriteBatch, psTexto, x + 100, barraY - 12);
+
+                // Estado debilitado
+                if (p.estaDebilitado()) {
+                    font.setColor(Color.RED);
+                    font.getData().setScale(0.8f);
+                    font.draw(spriteBatch, "DEBILITADO", x + 100, y + 20);
+                }
+
+                font.getData().setScale(1.0f);
+                spriteBatch.setColor(Color.WHITE);
+            } else {
+                // SLOT VACÍO
+                font.setColor(new Color(0.6f, 0.6f, 0.7f, 1));
+                font.draw(spriteBatch, "--- VACÍO ---", x + 120, y + 50);
+            }
+        }
+
+        // 7. INSTRUCCIONES
+        font.getData().setScale(0.9f);
+        font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
+        String instrucciones = "↑↓←→: Navegar  Enter: Seleccionar  ESC: Volver";
+        font.draw(spriteBatch, instrucciones, 250, 50);
+
+        // 8. RESTAURAR
+        font.getData().setScale(1.0f);
+        font.setColor(Color.WHITE);
+    }
+
+    // ===============================
+// VISTA DE DETALLE INDIVIDUAL
+// ===============================
+    private void dibujarDetallePokemon(int screenWidth, int screenHeight) {
+        PokemonJugador p = player.getPokemonSeleccionado();
+        if (p == null) return;
+
+        // 1. FONDO GENERAL (igual que equipo Pokémon)
+        spriteBatch.setColor(0.1f, 0.1f, 0.15f, 1);
+        spriteBatch.draw(whitePixel, 0, 0, screenWidth, screenHeight);
+        spriteBatch.setColor(Color.WHITE);
+
+        // ===== LADO IZQUIERDO: SPRITE Y NIVEL =====
+        float izquierdaAncho = screenWidth * 0.4f;
+
+        // Marco para el sprite - ESTILO OSCURO
+        float marcoX = 50;
+        float marcoY = 120;
+        float marcoAncho = izquierdaAncho - 100;
+        float marcoAlto = screenHeight - 240;
+
+        // Fondo del marco (oscuro)
+        spriteBatch.setColor(new Color(0.2f, 0.2f, 0.25f, 0.9f));
+        spriteBatch.draw(whitePixel, marcoX, marcoY, marcoAncho, marcoAlto);
+
+        // Borde del marco (gris claro)
+        spriteBatch.setColor(new Color(0.5f, 0.5f, 0.6f, 1));
+        // Bordes más gruesos (3px)
+        spriteBatch.draw(whitePixel, marcoX, marcoY, marcoAncho, 3);
+        spriteBatch.draw(whitePixel, marcoX, marcoY + marcoAlto - 3, marcoAncho, 3);
+        spriteBatch.draw(whitePixel, marcoX, marcoY, 3, marcoAlto);
+        spriteBatch.draw(whitePixel, marcoX + marcoAncho - 3, marcoY, 3, marcoAlto);
+        spriteBatch.setColor(Color.WHITE);
+
+        // Nivel (arriba)
         font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "POKÉMON", screenWidth / 2 - 60, screenHeight - 100);
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1)); // Texto claro
+        float nivelY = marcoY + marcoAlto - 40;
+        font.draw(spriteBatch, "Nv. " + p.getNivel(), marcoX + 20, nivelY);
+
+        // Sprite del Pokémon (centrado en el marco)
+        float spriteX = marcoX + (marcoAncho / 2) - 64;
+        float spriteY = marcoY + (marcoAlto / 2) - 64;
+
+        // Placeholder para sprite (color por tipo)
+        spriteBatch.setColor(getColorPorTipo(p.getTipoPrimario()));
+        spriteBatch.draw(whitePixel, spriteX, spriteY, 128, 128);
+
+        // DIBUJAR SPRITE REAL DEL POKÉMON (MODIFICADO)
+        if (p.getSprite() != null) {
+            spriteBatch.draw(p.getSprite(), spriteX, spriteY, 128, 128);
+        } else {
+            // Placeholder si no hay sprite
+            spriteBatch.setColor(getColorPorTipo(p.getTipoPrimario()));
+            spriteBatch.draw(whitePixel, spriteX, spriteY, 128, 128);
+            spriteBatch.setColor(Color.WHITE);
+
+            // Letra inicial (placeholder)
+            font.getData().setScale(3.0f);
+            font.setColor(Color.WHITE);
+            String inicial = p.getNombre().substring(0, 1);
+            font.draw(spriteBatch, inicial, spriteX + 50, spriteY + 70);
+            font.getData().setScale(1.0f);
+        }
+
+        // Nombre (abajo)
+        font.getData().setScale(1.5f);
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1)); // Texto claro
+        float nombreY = marcoY + 40;
+        font.draw(spriteBatch, p.getApodo(), marcoX + 20, nombreY);
+        font.getData().setScale(1.0f);
+        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1)); // Texto secundario
+        font.draw(spriteBatch, "(" + p.getNombre() + ")", marcoX + 20, nombreY - 25);
+
+        // ===== LADO DERECHO: 4 PESTAÑAS =====
+        float derechaX = izquierdaAncho + 20;
+        float derechaAncho = screenWidth - derechaX - 30;
+
+        // Títulos de pestañas
+        String[] titulosPestanas = {"ESTADÍSTICAS", "MOVIMIENTOS", "NATURALEZA", "ENCONTRADO"};
+
+        // Espacio para pestañas
+        float tabAlto = 45;
+        float tabsY = screenHeight - 80;
+
+        for (int i = 0; i < 4; i++) {
+            float tabX = derechaX + (i * (derechaAncho / 4));
+            float tabAncho = derechaAncho / 4;
+
+            if (i == player.getPokemonDetailTab()) {
+                // Pestaña activa (estilo oscuro)
+                spriteBatch.setColor(new Color(0.3f, 0.3f, 0.4f, 0.9f));
+                spriteBatch.draw(whitePixel, tabX, tabsY - tabAlto, tabAncho, tabAlto);
+
+                // Borde superior azul (más grueso)
+                spriteBatch.setColor(new Color(0.4f, 0.6f, 1.0f, 1));
+                spriteBatch.draw(whitePixel, tabX, tabsY, tabAncho, 4);
+
+                // Bordes laterales sutiles
+                spriteBatch.setColor(new Color(0.5f, 0.5f, 0.7f, 1));
+                spriteBatch.draw(whitePixel, tabX, tabsY - tabAlto, 1, tabAlto);
+                spriteBatch.draw(whitePixel, tabX + tabAncho - 1, tabsY - tabAlto, 1, tabAlto);
+            } else {
+                // Pestaña inactiva (más oscura)
+                spriteBatch.setColor(new Color(0.15f, 0.15f, 0.2f, 0.9f));
+                spriteBatch.draw(whitePixel, tabX, tabsY - tabAlto, tabAncho, tabAlto);
+
+                // Borde superior gris
+                spriteBatch.setColor(new Color(0.4f, 0.4f, 0.5f, 1));
+                spriteBatch.draw(whitePixel, tabX, tabsY, tabAncho, 1);
+            }
+
+            // Texto de pestaña (centrado)
+            if (i == player.getPokemonDetailTab()) {
+                font.setColor(new Color(0.9f, 0.9f, 1.0f, 1)); // Texto claro activo
+            } else {
+                font.setColor(new Color(0.6f, 0.6f, 0.8f, 1)); // Texto gris claro inactivo
+            }
+            font.getData().setScale(0.9f);
+
+            // Calcular ancho del texto para centrar
+            String tabTexto = titulosPestanas[i];
+            float textoAncho = tabTexto.length() * 7;
+            float textoX = tabX + (tabAncho - textoAncho) / 2;
+
+            font.draw(spriteBatch, tabTexto, textoX, tabsY - 25);
+
+            spriteBatch.setColor(Color.WHITE);
+        }
+
+        // ===== CONTENIDO DE LA PESTAÑA =====
+        float contenidoY = tabsY - tabAlto - 20;
+        float contenidoAlto = contenidoY - 120;
+
+        // Fondo del contenido (oscuro)
+        float contenidoX = derechaX;
+        float contenidoAncho = derechaAncho;
+
+        spriteBatch.setColor(new Color(0.15f, 0.15f, 0.2f, 0.9f));
+        spriteBatch.draw(whitePixel, contenidoX, 120, contenidoAncho, contenidoAlto);
+
+        // Borde del contenido (gris)
+        spriteBatch.setColor(new Color(0.5f, 0.5f, 0.6f, 1));
+        spriteBatch.draw(whitePixel, contenidoX, 120, contenidoAncho, 2);
+        spriteBatch.draw(whitePixel, contenidoX, 120 + contenidoAlto, contenidoAncho, 2);
+        spriteBatch.draw(whitePixel, contenidoX, 120, 2, contenidoAlto);
+        spriteBatch.draw(whitePixel, contenidoX + contenidoAncho, 120, 2, contenidoAlto);
+        spriteBatch.setColor(Color.WHITE);
+
+        // Mostrar contenido según pestaña
+        float margenInternoX = 20;
+        float margenInternoY = 20;
+
+        switch (player.getPokemonDetailTab()) {
+            case 0:
+                dibujarEstadisticasPokemon(p, contenidoX + margenInternoX,
+                    contenidoY - margenInternoY,
+                    contenidoAncho - margenInternoX * 2);
+                break;
+            case 1:
+                dibujarMovimientosPokemon(p, contenidoX + margenInternoX,
+                    contenidoY - margenInternoY,
+                    contenidoAncho - margenInternoX * 2);
+                break;
+            case 2:
+                dibujarNaturalezaPokemon(p, contenidoX + margenInternoX,
+                    contenidoY - margenInternoY,
+                    contenidoAncho - margenInternoX * 2);
+                break;
+            case 3:
+                dibujarEncontradoPokemon(p, contenidoX + margenInternoX,
+                    contenidoY - margenInternoY,
+                    contenidoAncho - margenInternoX * 2);
+                break;
+        }
+
+        // Instrucciones ESPECÍFICAS
+        font.getData().setScale(0.9f);
+        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
+        String instrucciones = "←→: Cambiar pestaña  B: Volver al equipo  ESC: Volver al menu";
+        float instruccionWidth = font.getData().scaleX * instrucciones.length() * 6;
+        font.draw(spriteBatch, instrucciones, (screenWidth - instruccionWidth) / 2, 50);
+
+        font.getData().setScale(1.0f);
+        font.setColor(Color.WHITE);
+    }
+
+    // ===============================
+// CONTENIDOS DE LAS PESTAÑAS
+// ===============================
+    private void dibujarEstadisticasPokemon(PokemonJugador p, float x, float y, float ancho) {
+        // MÁRGEN SUPERIOR
+        y -= 15; // 15px de margen desde el borde superior del contenedor
+
+        font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
+
+        // ===== BARRA DE PS CON MEJOR ESPACIADO =====
+        font.getData().setScale(1.3f); // Un poco más grande
+        font.draw(spriteBatch, "PS", x, y);
+
+        float psAncho = ancho * 0.7f; // Más angosta para dejar espacio
+        float porcentajePS = (float)p.getPsActual() / p.getPsMaximos();
+
+        // Posicionar barra DEBAJO del texto, no al mismo nivel
+        float barraY = y - 25; // 25px debajo del texto "PS"
+
+        // Fondo barra PS
+        spriteBatch.setColor(new Color(0.85f, 0.85f, 0.9f, 1));
+        spriteBatch.draw(whitePixel, x + 80, barraY, psAncho, 20); // Más alta (20px)
+
+        // Barra PS actual
+        if (porcentajePS > 0.5) {
+            spriteBatch.setColor(new Color(0.0f, 0.8f, 0.2f, 1));
+        } else if (porcentajePS > 0.2) {
+            spriteBatch.setColor(new Color(1.0f, 0.8f, 0.0f, 1));
+        } else {
+            spriteBatch.setColor(Color.RED);
+        }
+        spriteBatch.draw(whitePixel, x + 80, barraY, psAncho * porcentajePS, 20);
+
+        // Texto PS (al lado de la barra, no encima)
+        spriteBatch.setColor(Color.WHITE);
+        font.setColor(Color.BLACK);
+        font.getData().setScale(1.1f);
+        // Posicionar texto alineado verticalmente con la barra
+        font.draw(spriteBatch, p.getPsActual() + "/" + p.getPsMaximos(),
+            x + psAncho + 90, barraY + 5);
+
+        // ===== ESTADÍSTICAS (con más espacio) =====
+        y = barraY - 40; // 40px debajo de la barra de PS
+
+        String[] statNombres = {"Ataque", "Defensa", "Ataque Esp.", "Defensa Esp.", "Velocidad"};
+        int[] stats = {
+            p.getAtaque(),
+            p.getDefensa(),
+            p.getAtaqueEspecial(),
+            p.getDefensaEspecial(),
+            p.getVelocidad()
+        };
+
+        font.getData().setScale(1.0f);
+        for (int i = 0; i < statNombres.length; i++) {
+            font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+            font.draw(spriteBatch, statNombres[i] + ":", x, y);
+
+            // Barra de stat
+            float maxStat = 200;
+            float porcentajeStat = Math.min(1.0f, (float)stats[i] / maxStat);
+            float statAncho = ancho * 0.5f; // Más angosta
+
+            spriteBatch.setColor(new Color(0.85f, 0.85f, 0.9f, 1));
+            spriteBatch.draw(whitePixel, x + 100, y - 8, statAncho, 12); // Más alta y con margen
+
+            // Color según tipo de stat
+            if (i == 0 || i == 2) {
+                spriteBatch.setColor(new Color(0.9f, 0.3f, 0.3f, 1));
+            } else if (i == 1 || i == 3) {
+                spriteBatch.setColor(new Color(0.3f, 0.3f, 0.9f, 1));
+            } else {
+                spriteBatch.setColor(new Color(0.9f, 0.9f, 0.3f, 1));
+            }
+
+            spriteBatch.draw(whitePixel, x + 100, y - 8, statAncho * porcentajeStat, 12);
+
+            // Valor (alineado a la derecha de la barra)
+            font.setColor(Color.BLACK);
+            font.draw(spriteBatch, String.valueOf(stats[i]), x + statAncho + 110, y);
+
+            y -= 28; // Más espacio entre stats
+        }
+
+        // ===== HABILIDAD =====
+        y -= 15;
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Habilidad:", x, y);
+        font.setColor(Color.BLACK);
+        font.draw(spriteBatch, p.getHabilidad().getNombre(), x + 80, y);
+
+        // Descripción (con ajuste de línea mejorado)
+        y -= 25;
+        font.getData().setScale(0.85f);
+        font.setColor(new Color(0.5f, 0.5f, 0.7f, 1));
+
+        String descripcion = p.getHabilidad().getDescripcion();
+        if (descripcion.length() > 50) {
+            // Encontrar espacio para dividir
+            int splitIndex = 50;
+            for (int i = 50; i >= 0; i--) {
+                if (descripcion.charAt(i) == ' ') {
+                    splitIndex = i;
+                    break;
+                }
+            }
+
+            String primeraLinea = descripcion.substring(0, splitIndex);
+            font.draw(spriteBatch, primeraLinea, x, y);
+
+            y -= 20;
+            String segundaLinea = descripcion.substring(splitIndex + 1);
+            if (segundaLinea.length() > 50) {
+                segundaLinea = segundaLinea.substring(0, 47) + "...";
+            }
+            font.draw(spriteBatch, segundaLinea, x, y);
+        } else {
+            font.draw(spriteBatch, descripcion, x, y);
+        }
+
+        font.getData().setScale(1.0f);
+    }
+
+    private void dibujarMovimientosPokemon(PokemonJugador p, float x, float y, float ancho) {
+        List<Movimiento> movimientos = p.getMovimientos();
+
+        font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
+        font.getData().setScale(1.2f);
+        font.draw(spriteBatch, "MOVIMIENTOS", x, y);
         font.getData().setScale(1.0f);
 
-        font.draw(spriteBatch, "Aquí iría tu equipo Pokémon", screenWidth / 2 - 120, screenHeight / 2);
-        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+        y -= 40;
+
+        for (int i = 0; i < movimientos.size(); i++) {
+            Movimiento m = movimientos.get(i);
+
+            // Fondo alternado para mejor legibilidad
+            if (i % 2 == 0) {
+                spriteBatch.setColor(new Color(0.97f, 0.97f, 1.0f, 1));
+            } else {
+                spriteBatch.setColor(new Color(0.93f, 0.93f, 0.98f, 1));
+            }
+            spriteBatch.draw(whitePixel, x, y - 15, ancho, 35);
+            spriteBatch.setColor(Color.WHITE);
+
+            // Nombre del movimiento
+            font.setColor(Color.BLACK);
+            font.draw(spriteBatch, m.getNombre(), x + 10, y);
+
+            // Tipo
+            Color colorTipo = getColorPorTipo(m.getTipo());
+            font.setColor(colorTipo);
+            font.draw(spriteBatch, m.getTipo().toString(), x + 120, y);
+
+            // PP - MOVIDO MÁS A LA DERECHA (x + ancho - 80)
+            font.setColor(Color.BLACK);
+            String pp = m.getPpActual() + "/" + m.getPpMax();
+
+            // Color del texto de PP según la cantidad
+            float ppPorcentaje = (float)m.getPpActual() / m.getPpMax();
+            if (ppPorcentaje > 0.5) {
+                font.setColor(new Color(0.0f, 0.5f, 0.0f, 1)); // Verde oscuro
+            } else if (ppPorcentaje > 0.2) {
+                font.setColor(new Color(0.8f, 0.5f, 0.0f, 1)); // Naranja
+            } else {
+                font.setColor(Color.RED);
+            }
+
+            font.draw(spriteBatch, "PP: " + pp, x + ancho - 80, y); // 30px más a la derecha
+            font.setColor(Color.BLACK); // Restaurar color
+
+            // ELIMINADO: Código de la barra de PP
+            // float ppPorcentaje = (float)m.getPpActual() / m.getPpMax();
+            // float ppAncho = 60;
+            // ... resto del código de la barra ...
+
+            y -= 40;
+        }
+    }
+
+    private void dibujarNaturalezaPokemon(PokemonJugador p, float x, float y, float ancho) {
+        // Por ahora, naturaleza placeholder
+        font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
+
+        font.getData().setScale(1.5f);
+        font.draw(spriteBatch, "NATURALEZA", x, y);
+        font.getData().setScale(1.0f);
+
+        y -= 50;
+
+        // Placeholder - puedes implementar sistema de naturalezas después
+        font.setColor(new Color(0.8f, 0.4f, 0.2f, 1)); // Color naranja
+        font.getData().setScale(2.0f);
+        font.draw(spriteBatch, "SERIO", x + ancho/2 - 30, y);
+        font.getData().setScale(1.0f);
+
+        y -= 50;
+
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Esta naturaleza no altera", x, y);
+        y -= 25;
+        font.draw(spriteBatch, "ninguna estadística.", x, y);
+
+        y -= 40;
+
+        // Placeholder para efectos de naturaleza
+        String[] stats = {"Ataque", "Defensa", "Ataque Esp.", "Defensa Esp.", "Velocidad"};
+        String[] efectos = {"→", "→", "→", "→", "→"}; // Neutral
+
+        for (int i = 0; i < stats.length; i++) {
+            font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
+            font.draw(spriteBatch, stats[i], x + 50, y);
+
+            if (efectos[i].equals("↑")) {
+                font.setColor(Color.GREEN);
+            } else if (efectos[i].equals("↓")) {
+                font.setColor(Color.RED);
+            } else {
+                font.setColor(new Color(0.6f, 0.6f, 0.6f, 1));
+            }
+
+            font.draw(spriteBatch, efectos[i], x + 150, y);
+            y -= 25;
+        }
+    }
+
+    private void dibujarEncontradoPokemon(PokemonJugador p, float x, float y, float ancho) {
+        font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
+
+        font.getData().setScale(1.5f);
+        font.draw(spriteBatch, "REGISTRO", x, y);
+        font.getData().setScale(1.0f);
+
+        y -= 50;
+
+        // Información placeholder (puedes conectarlo con sistema de guardado después)
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Lugar encontrado:", x, y);
+        font.setColor(Color.BLACK);
+        font.draw(spriteBatch, "Ruta 201", x + 150, y);
+        y -= 30;
+
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Nivel encontrado:", x, y);
+        font.setColor(Color.BLACK);
+        font.draw(spriteBatch, String.valueOf(p.getNivel()), x + 150, y);
+        y -= 30;
+
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Fecha:", x, y);
+        font.setColor(Color.BLACK);
+        font.draw(spriteBatch, "15/03/2024", x + 150, y);
+        y -= 30;
+
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Hora:", x, y);
+        font.setColor(Color.BLACK);
+        font.draw(spriteBatch, "14:30", x + 150, y);
+        y -= 30;
+
+        font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        font.draw(spriteBatch, "Método:", x, y);
+        font.setColor(Color.BLACK);
+        font.draw(spriteBatch, "Captura salvaje", x + 150, y);
+        y -= 40;
+
+        // ELIMINADO: Línea divisoria y sección "OTROS DATOS"
+        // spriteBatch.setColor(new Color(0.8f, 0.8f, 0.85f, 1));
+        // spriteBatch.draw(whitePixel, x, y, ancho, 1);
+        // spriteBatch.setColor(Color.WHITE);
+        // y -= 30;
+
+        // ELIMINADO: "OTROS DATOS" y sus campos
+        // font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
+        // font.getData().setScale(1.2f);
+        // font.draw(spriteBatch, "OTROS DATOS", x, y);
+        // font.getData().setScale(1.0f);
+        // y -= 40;
+        //
+        // font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        // font.draw(spriteBatch, "ID del Entrenador:", x, y);
+        // font.setColor(Color.BLACK);
+        // font.draw(spriteBatch, "00001", x + 150, y);
+        // y -= 25;
+        //
+        // font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
+        // font.draw(spriteBatch, "Nombre OT:", x, y);
+        // font.setColor(Color.BLACK);
+        // font.draw(spriteBatch, player.getEntrenador().getNombre(), x + 150, y);
+
+        // En su lugar, podemos agregar un mensaje o dejar espacio
+        font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
+        font.getData().setScale(0.9f);
+        font.draw(spriteBatch, "Datos de captura", x + ancho/2 - 50, y - 20);
+        font.getData().setScale(1.0f);
+    }
+
+    // Método auxiliar para colores de tipo
+    private Color getColorPorTipo(Tipo tipo) {
+        switch (tipo) {
+            case FUEGO: return new Color(0.9f, 0.3f, 0.1f, 1);
+            case AGUA: return new Color(0.1f, 0.5f, 0.9f, 1);
+            case PLANTA: return new Color(0.2f, 0.7f, 0.2f, 1);
+            case ELECTRICO: return new Color(0.9f, 0.9f, 0.1f, 1);
+            case NORMAL: return new Color(0.7f, 0.7f, 0.6f, 1);
+            default: return new Color(0.5f, 0.5f, 0.5f, 1);
+        }
     }
 
     private void dibujarCrafteo(int screenWidth, int screenHeight) {
@@ -795,6 +1543,9 @@ public class GameScreen implements Screen {
             case MAIN:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC/I: Salir";
                 break;
+            case POKEMON_TEAM:
+                instrucciones = "Flechas ↑↓: Navegar Pokémon | ←→: Seleccionar acción | 1-4: Acciones rápidas | Enter: Ejecutar | ESC: Volver";
+                break;
             case INVENTORY:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar item | 1/2/3: Acciones | ESC: Volver";
                 break;
@@ -828,6 +1579,106 @@ public class GameScreen implements Screen {
         spriteBatch.setProjectionMatrix(camara.combined);
     }
 
+    // AGREGAR este método para manejar combate:
+    private void manejarCombate(float delta) {
+        // Aquí irá la lógica de la interfaz de combate
+        // Mostrará los Pokémon, PS, movimientos, etc.
+
+        // Por ahora, solo dibujamos
+        if (combateActivo != null && combateActivo.isCombateTerminado()) {
+            // Combate terminado
+            terminarCombate();
+        }
+    }
+
+
+    // AGREGAR método para manejar entrada en combate:
+    // EN GameScreen.java, en el método manejarEntradaCombate():
+    private void manejarEntradaCombate() {
+        if (combateActivo.isTurnoJugador()) {
+            // Teclas 1-4 para usar movimientos
+            if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
+                combateActivo.ejecutarTurnoJugador(0);
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
+                combateActivo.ejecutarTurnoJugador(1);
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.NUM_3)) {
+                combateActivo.ejecutarTurnoJugador(2);
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.NUM_4)) {
+                combateActivo.ejecutarTurnoJugador(3);
+            }
+
+            // Tecla B para usar Poké Ball (CORREGIDO)
+            if (Gdx.input.isKeyJustPressed(Keys.B)) {
+                if (pokemonSalvajeActual instanceof PokemonSalvaje) {
+                    // Verificar si hay Poké Balls en inventario
+                    Ranura pokeballsSlot = player.getInventario().buscarItem("Poké Ball");
+                    if (pokeballsSlot != null && pokeballsSlot.getCantidad() > 0) {
+                        // Obtener multiplicador de la Poké Ball
+                        Item itemPokeball = pokeballsSlot.getItem();
+                        float multiplicador = 1.0f; // Default
+
+                        // Determinar multiplicador según tipo de Poké Ball
+                        if (itemPokeball instanceof Pokeball) {
+                            Pokeball pokeball = (Pokeball) itemPokeball;
+                            multiplicador = pokeball.getTasaCaptura();
+                        }
+
+                        // Usar Poké Ball
+                        pokeballsSlot.usarCantidad(1);
+                        boolean exitoCaptura = combateActivo.intentarCaptura(multiplicador);
+
+                        if (exitoCaptura) {
+                            // Convertir a Pokémon jugador y agregar al equipo
+                            PokemonJugador pokemonCapturado = ((PokemonSalvaje)pokemonSalvajeActual).convertirAJugador();
+                            boolean agregado = player.getEntrenador().agregarPokemon(pokemonCapturado);
+
+                            if (agregado) {
+                                System.out.println("¡Has capturado a " + pokemonCapturado.getNombre() + "!");
+                            } else {
+                                System.out.println("¡Equipo lleno! No puedes llevar más Pokémon.");
+                            }
+                        }
+                    } else {
+                        System.out.println("¡No tienes Poké Balls!");
+                    }
+                }
+            }
+
+            // Tecla C para cambiar Pokémon
+            if (Gdx.input.isKeyJustPressed(Keys.C)) {
+                player.setMenuState(MenuState.CAMBIO_POKEMON);
+            }
+        }
+    }
+
+    // AGREGAR método para terminar combate:
+    private void terminarCombate() {
+        if (combateActivo == null) return;
+
+        Pokemon ganador = combateActivo.getGanador();
+        Pokemon perdedor = combateActivo.getPerdedor();
+
+        if (ganador == player.getEntrenador().getPokemonActual()) {
+            System.out.println("¡Has ganado el combate!");
+            // Dar experiencia al Pokémon
+            int expGanada = pokemonSalvajeActual.getNivel() * 10;
+            if (player.getEntrenador().getPokemonActual() instanceof PokemonJugador) {
+                ((PokemonJugador)player.getEntrenador().getPokemonActual()).ganarExperiencia(expGanada);
+            }
+        } else {
+            System.out.println("¡Has perdido el combate!");
+        }
+
+        // Limpiar
+        combateActivo = null;
+        pokemonSalvajeActual = null;
+        enCombate = false;
+        player.setMenuState(MenuState.NONE);
+    }
+
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height);
@@ -839,7 +1690,18 @@ public class GameScreen implements Screen {
         if (mapa != null) mapa.dispose();
         if (renderer != null) renderer.dispose();
         if (spriteBatch != null) spriteBatch.dispose();
-        if (player != null) player.dispose();
+        if (player != null) {
+            // Liberar sprites de los Pokémon del jugador
+            Entrenador entrenador = player.getEntrenador();
+            if (entrenador != null) {
+                for (PokemonJugador pokemon : entrenador.getEquipo()) {
+                    if (pokemon != null) {
+                        pokemon.dispose();
+                    }
+                }
+            }
+            player.dispose();
+        }
         if (font != null) font.dispose();
         if (whitePixel != null) whitePixel.dispose();
     }

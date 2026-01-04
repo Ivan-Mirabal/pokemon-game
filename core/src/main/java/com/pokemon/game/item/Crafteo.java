@@ -104,13 +104,16 @@ public class Crafteo {
         // Crear el ítem resultante (USANDO LOS SETTERS CORRECTAMENTE)
         switch(idReceta) {
             case 1: // Poké Ball normal
-                inventory.agregarItem(new Pokeball(), 1);
+                Pokeball pokeballNormal = new Pokeball();
+                pokeballNormal.setNombre("Poké Ball");
+                pokeballNormal.setTasaCaptura(1.0f);
+                inventory.agregarItem(pokeballNormal, 1);
                 break;
 
-            case 2: // Super Poké Ball - USANDO SETTERS
+            case 2: // Super Poké Ball
                 Pokeball superBall = new Pokeball();
                 superBall.setNombre("Super Poké Ball");
-                superBall.setTasaCaptura(2.0f);
+                superBall.setTasaCaptura(1.5f); // Multiplicador 1.5
                 inventory.agregarItem(superBall, 1);
                 break;
 

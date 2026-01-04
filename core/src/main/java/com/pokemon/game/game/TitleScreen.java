@@ -27,6 +27,7 @@ public class TitleScreen implements Screen {
         this.game = game;
         batch = new SpriteBatch();
 
+
         try {
             titleTexture = new Texture(Gdx.files.internal("sprites/title_screen.png"));
         } catch (Exception e) {
@@ -92,6 +93,7 @@ public class TitleScreen implements Screen {
     @Override
     public void dispose() {
         System.out.println("TitleScreen: Disposing resources");
+
         if (batch != null) {
             batch.dispose();
         }
@@ -106,6 +108,7 @@ public class TitleScreen implements Screen {
     @Override
     public void show() {
         transitioning = false;
+        game.musics.startmenumusic();
     }
 
     @Override

@@ -1,16 +1,16 @@
 package com.pokemon.game;
 
 public enum MenuState {
-    NONE,           // No hay menú visible
-    MAIN,           // Menú principal
-    INVENTORY,      // Inventario
-    INVENTORY_ITEM_SELECTED, // Item seleccionado en inventario
-    POKEMON,        // Pokémon
-    POKEDEX,        // Pokédex
-    CRAFTING,       // Crafteo ← ¡YA EXISTE!
-    SAVE,           // Guardar partida
-    OPTIONS,        // Opciones
-    OPTIONS_VOLUME, // Submenú de volumen
-    OPTIONS_CONTROLS, // Submenú de controles
-    OPTIONS_CREDITS  // Submenú de créditos
+    NONE,
+    MAIN,
+    INVENTORY,
+    POKEMON_TEAM,       // Vista de equipo (2 columnas)
+    POKEMON_DETAIL,     // Vista de detalle individual
+    POKEDEX,
+    CRAFTING,
+    SAVE,
+    OPTIONS,
+    COMBATE,
+    SELECCION_MOVIMIENTO,
+    CAMBIO_POKEMON
 }
