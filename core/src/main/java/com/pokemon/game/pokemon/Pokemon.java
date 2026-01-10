@@ -66,7 +66,7 @@ public class Pokemon {
     // Cargar sprite basado en la especie
     public void cargarSprite() {
         try {
-            String path = "sprites/pokemon/" + especie.getNombre().toLowerCase() + ".png";
+            String path = "sprites/pokemon/" + especie.getNombre().toLowerCase() + "/normal.png";
             sprite = new Texture(Gdx.files.internal(path));
         } catch (Exception e) {
             sprite = crearSpritePlaceholder();
@@ -138,10 +138,13 @@ public class Pokemon {
     }
 
     public void curar(int cantidad) {
-        if (debilitado && cantidad > 0) {
-            debilitado = false;
+        this.psActual += cantidad;
+        if (this.psActual > this.psMaximos) {
+            this.psActual = this.psMaximos;
         }
-        psActual = Math.min(psMaximos, psActual + cantidad);
+        if (this.psActual > 0) {
+            this.debilitado = false;
+        }
     }
 
     public void curarCompletamente() {

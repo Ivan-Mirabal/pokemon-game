@@ -1,0 +1,247 @@
+{
+  "moves": [
+    {
+      "name": "Impactrueno",
+      "type": "ELECTRICO",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 30,
+      "category": "SPECIAL",
+      "description": "Ataque eléctrico que puede paralizar"
+    },
+    {
+      "name": "Rayo",
+      "type": "ELECTRICO",
+      "power": 90,
+      "accuracy": 100,
+      "pp": 15,
+      "category": "SPECIAL",
+      "description": "Poderoso rayo eléctrico"
+    },
+    {
+      "name": "Ascuas",
+      "type": "FUEGO",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 25,
+      "category": "SPECIAL",
+      "description": "Lanza chispas que pueden quemar"
+    },
+    {
+      "name": "Lanzallamas",
+      "type": "FUEGO",
+      "power": 90,
+      "accuracy": 85,
+      "pp": 15,
+      "category": "SPECIAL",
+      "description": "Potente chorro de fuego"
+    },
+    {
+      "name": "Latigo Cepa",
+      "type": "PLANTA",
+      "power": 45,
+      "accuracy": 100,
+      "pp": 25,
+      "category": "PHYSICAL",
+      "description": "Golpea con látigos de plantas"
+    },
+    {
+      "name": "Rayo Solar",
+      "type": "PLANTA",
+      "power": 120,
+      "accuracy": 100,
+      "pp": 10,
+      "category": "SPECIAL",
+      "description": "Absorbe luz solar para atacar"
+    },
+    {
+      "name": "Pistola Agua",
+      "type": "AGUA",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 25,
+      "category": "SPECIAL",
+      "description": "Dispara agua a presión"
+    },
+    {
+      "name": "Hidrobomba",
+      "type": "AGUA",
+      "power": 110,
+      "accuracy": 80,
+      "pp": 5,
+      "category": "SPECIAL",
+      "description": "Potente chorro de agua"
+    },
+    {
+      "name": "Psicoonda",
+      "type": "PSIQUICO",
+      "power": 65,
+      "accuracy": 100,
+      "pp": 20,
+      "category": "SPECIAL",
+      "description": "Onda psíquica que daña"
+    },
+    {
+      "name": "Puño Dinamico",
+      "type": "LUCHA",
+      "power": 100,
+      "accuracy": 50,
+      "pp": 5,
+      "category": "PHYSICAL",
+      "description": "Puñetazo muy poderoso"
+    },
+    {
+      "name": "Ataque Ala",
+      "type": "VOLADOR",
+      "power": 60,
+      "accuracy": 100,
+      "pp": 35,
+      "category": "PHYSICAL",
+      "description": "Golpea con las alas"
+    },
+    {
+      "name": "Terremoto",
+      "type": "TIERRA",
+      "power": 100,
+      "accuracy": 100,
+      "pp": 10,
+      "category": "PHYSICAL",
+      "description": "Sacude el suelo fuertemente"
+    },
+    {
+      "name": "Lanzarrocas",
+      "type": "ROCA",
+      "power": 50,
+      "accuracy": 90,
+      "pp": 15,
+      "category": "PHYSICAL",
+      "description": "Lanza piedras al enemigo"
+    },
+    {
+      "name": "Picotazo",
+      "type": "BICHO",
+      "power": 60,
+      "accuracy": 100,
+      "pp": 20,
+      "category": "PHYSICAL",
+      "description": "Ataca picando al enemigo"
+    },
+    {
+      "name": "Ácido",
+      "type": "VENENO",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 30,
+      "category": "SPECIAL",
+      "description": "Rocía ácido corrosivo"
+    },
+    {
+      "name": "Rayo Hielo",
+      "type": "HIELO",
+      "power": 90,
+      "accuracy": 100,
+      "pp": 10,
+      "category": "SPECIAL",
+      "description": "Rayo de hielo que puede congelar"
+    },
+    {
+      "name": "Bola Sombra",
+      "type": "FANTASMA",
+      "power": 80,
+      "accuracy": 100,
+      "pp": 15,
+      "category": "SPECIAL",
+      "description": "Lanza una bola de sombra"
+    },
+    {
+      "name": "Garra Dragon",
+      "type": "DRAGON",
+      "power": 80,
+      "accuracy": 100,
+      "pp": 15,
+      "category": "PHYSICAL",
+      "description": "Ataca con garras de dragón"
+    },
+    {
+      "name": "Garra Metal",
+      "type": "ACERO",
+      "power": 50,
+      "accuracy": 95,
+      "pp": 35,
+      "category": "PHYSICAL",
+      "description": "Ataca con garras de acero"
+    },
+    {
+      "name": "Mordisco",
+      "type": "SINIESTRO",
+      "power": 60,
+      "accuracy": 100,
+      "pp": 25,
+      "category": "PHYSICAL",
+      "description": "Muerde ferozmente al enemigo"
+    },
+    {
+      "name": "Placaje",
+      "type": "NORMAL",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 35,
+      "category": "PHYSICAL",
+      "description": "Golpea con el cuerpo"
+    },
+    {
+      "name": "Arañazo",
+      "type": "NORMAL",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 35,
+      "category": "PHYSICAL",
+      "description": "Araña al rival"
+    },
+    {
+      "name": "Golpe Cabeza",
+      "type": "NORMAL",
+      "power": 70,
+      "accuracy": 100,
+      "pp": 15,
+      "category": "PHYSICAL",
+      "description": "Golpea con la cabeza"
+    },
+    {
+      "name": "Ataque Rápido",
+      "type": "NORMAL",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 30,
+      "category": "PHYSICAL",
+      "description": "Ataca primero siempre"
+    },
+    {
+      "name": "Contraataque",
+      "type": "LUCHA",
+      "power": 70,
+      "accuracy": 100,
+      "pp": 20,
+      "category": "PHYSICAL",
+      "description": "Contraataca después de recibir daño"
+    },
+    {
+      "name": "Drenadoras",
+      "type": "PLANTA",
+      "power": 20,
+      "accuracy": 100,
+      "pp": 10,
+      "category": "SPECIAL",
+      "description": "Drena PS del rival"
+    },
+    {
+      "name": "Giro Fuego",
+      "type": "FUEGO",
+      "power": 60,
+      "accuracy": 100,
+      "pp": 25,
+      "category": "PHYSICAL",
+      "description": "Golpea con fuego giratorio"
+    }
+  ]
+}

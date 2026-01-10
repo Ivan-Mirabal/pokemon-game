@@ -31,7 +31,7 @@ public class Musics {
         backgroundmusic2.play();
     }
 
-    public void startbattlemusic(){
+    public void startBattleMusic(){
         backgroundmusic3.setLooping(true);
         backgroundmusic3.setVolume(0.5f);    // Volumen entre 0.0 y 1.0
         backgroundmusic3.play();
@@ -56,11 +56,6 @@ public class Musics {
         backgroundmusic2.stop();
     }
 
-    public void stopbattlemusic(){
-        backgroundmusic3.stop();
-    }
-
-
     // Deshacerse de las musicas
     public void disposemenumusic() {
         backgroundmusic1.dispose();
@@ -69,5 +64,6 @@ public class Musics {
     public void disposeopenworldmusic() {
         backgroundmusic2.dispose();
     }
-}
 
+    public void stopBattleMusic() { backgroundmusic3.stop();}
+}

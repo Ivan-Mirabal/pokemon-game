@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -15,14 +16,19 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pokemon.game.*;
+import com.pokemon.game.data.DataLoader;
 import com.pokemon.game.item.Crafteo;
+import com.pokemon.game.item.Curacion;
 import com.pokemon.game.item.Item;
 import com.pokemon.game.item.Pokeball;
 import com.pokemon.game.player.Inventario;
 import com.pokemon.game.player.Player;
 import com.pokemon.game.player.Ranura;
+import com.pokemon.game.pokedex.PokedexScreen;
 import com.pokemon.game.pokemon.*;
+import com.pokemon.game.pokedex.PokedexEntry;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import java.util.List;
@@ -68,18 +74,31 @@ public class GameScreen implements Screen {
     private static final float TRANSITION_COOLDOWN_TIME = 0.3f;
 
     // Variables para el Menú
-    private BitmapFont font;
-    private Texture whitePixel;
+    private final BitmapFont font;
+    private final Texture whitePixel;
 
-    private Combate combateActivo;
-    private boolean enCombate;
-    private Pokemon pokemonSalvajeActual;
+    private PokedexScreen pokedexScreen;
+
+    private EncountersManager encountersManager;
 
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY) {
         this.game = game;
         this.initialMap = initialMap;
         this.startX = startX;
         this.startY = startY;
+
+        this.font = new BitmapFont();
+        this.font.setColor(Color.WHITE);
+        this.font.getData().setScale(0.8f);
+
+        this.encountersManager = new EncountersManager();
+
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        this.whitePixel = new Texture(pixmap);
+        pixmap.dispose();
+
     }
 
     @Override
@@ -89,17 +108,7 @@ public class GameScreen implements Screen {
         game.musics.startopenworldmusic();
         cargarSpritesPokemon();
 
-        // Inicializar fuente
-        font = new BitmapFont();
-        font.setColor(Color.WHITE);
-        font.getData().setScale(0.8f);
-
-        // Crear textura blanca programáticamente
-        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.WHITE);
-        pixmap.fill();
-        whitePixel = new Texture(pixmap);
-        pixmap.dispose();
+        pokedexScreen = new PokedexScreen(player);
     }
 
     private void loadMap(String mapFile, float playerX, float playerY) {
@@ -209,10 +218,10 @@ public class GameScreen implements Screen {
         float collisionHeight = height * 0.7f;
 
         // Calcular los bordes del rectángulo de colisión
-        float left = centerX - collisionWidth/2;
-        float right = centerX + collisionWidth/2;
-        float bottom = centerY - collisionHeight/2;
-        float top = centerY + collisionHeight/2;
+        float left = centerX - collisionWidth / 2;
+        float right = centerX + collisionWidth / 2;
+        float bottom = centerY - collisionHeight / 2;
+        float top = centerY + collisionHeight / 2;
 
         // Convertir a celdas de tiles
         int leftTile = (int) (left / tileWidth);
@@ -241,7 +250,7 @@ public class GameScreen implements Screen {
 
     private void cargarSpritesPokemon() {
         pokemonSprites = new HashMap<>();
-        String[] nombresPokemon = {"pikachu", "bulbasaur", "squirtle", "charmander", "charizard"};
+        String[] nombresPokemon = {"pikachu", "charmander", "charizard"};
 
         for (String nombre : nombresPokemon) {
             try {
@@ -262,29 +271,24 @@ public class GameScreen implements Screen {
             transitionCooldown -= delta;
         }
 
-        // 2. Si hay combate activo, manejar combate
-        if (enCombate && combateActivo != null) {
-            manejarCombate(delta);
-        } else {
-            // 3. Si NO hay combate, manejar entrada normal
-            handleInput();
+        // 2. Manejar entrada (SIEMPRE)
+        handleInput();
 
-            // 4. Lógica del juego (solo si NO hay menú abierto)
-            if (player.getMenuState() == MenuState.NONE) {
-                player.update(delta);
-                checkMapTransition();
-                updateCamera();
-            }
+        // 3. Lógica del juego (solo si NO hay menú abierto)
+        if (player.getMenuState() == MenuState.NONE) {
+            player.update(delta);
+            checkMapTransition();
+            updateCamera();
         }
 
-        // 3. Limpiar pantalla
+        // 4. Limpiar pantalla
         ScreenUtils.clear(0, 0, 0, 1);
 
-        // 4. Dibujar el mundo (SIEMPRE)
+        // 5. Dibujar el mundo (SIEMPRE)
         renderer.setView(camara);
         renderer.render();
 
-        // 5. Dibujar al jugador (SIEMPRE)
+        // 6. Dibujar al jugador (SIEMPRE)
         spriteBatch.setProjectionMatrix(camara.combined);
         spriteBatch.begin();
         spriteBatch.draw(player.currentFrame,
@@ -294,140 +298,260 @@ public class GameScreen implements Screen {
             player.height);
         spriteBatch.end();
 
-        // 6. Dibujar HUD (solo si no hay menú)
+        // 7. Dibujar HUD (solo si no hay menú)
         if (player.getMenuState() == MenuState.NONE) {
             dibujarHUD();
         }
 
-        // 7. Dibujar menú (si hay alguno activo)
+        // 8. Dibujar menú (si hay alguno activo)
         if (player.getMenuState() != MenuState.NONE) {
             dibujarMenu();
         }
+
+        if (player.getMenuState() == MenuState.NONE) {
+            encountersManager.update(delta);
+
+            // Solo verificar encuentros si el jugador se está moviendo
+            if (player.isMoving()) {
+                String zonaActual = obtenerNombreMapaParaEncuentros(); // <-- CAMBIADO
+                int nivelPromedio = calcularNivelPromedioEquipo();
+
+                PokemonSalvaje encontrado = encountersManager.checkEncounter(
+                    zonaActual, nivelPromedio, player.isMoving());
+
+                if (encontrado != null) {
+                    iniciarCombate(encontrado);
+                }
+            }
+        }
+    }
+
+    public BitmapFont getFont() {
+        return font;
+    }
+
+    public Texture getWhitePixel() {
+        return whitePixel;
     }
 
     // Manejar entrada del teclado
     private void handleInput() {
+        // NOTA IMPORTANTE: Ya NO hay manejo de combate aquí
+        // El combate se maneja completamente en CombateScreen
 
-        if (enCombate && combateActivo != null) {
-            manejarEntradaCombate();
-        } else {
-            // Tecla I para abrir/cerrar menú principal
-            if (Gdx.input.isKeyJustPressed(Keys.I)) {
-                if (player.getMenuState() == MenuState.NONE) {
-                    game.musics.stopopenworldmusic();
-                    game.musics.startpausemusic();
-                    player.setMenuState(MenuState.MAIN);
-                } else {
-                    player.setMenuState(MenuState.NONE);
-                    game.musics.stoppausemusic();
-                    game.musics.startopenworldmusic();
+        // Tecla I para abrir/cerrar menú principal
+        if (Gdx.input.isKeyJustPressed(Keys.I)) {
+            if (player.getMenuState() == MenuState.NONE) {
+                game.musics.stopopenworldmusic();
+                game.musics.startpausemusic();
+                player.setMenuState(MenuState.MAIN);
+            } else {
+                player.setMenuState(MenuState.NONE);
+                game.musics.stoppausemusic();
+                game.musics.startopenworldmusic();
+            }
+        }
+
+        // Tecla ESC para retroceder
+        if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+            player.goBack();
+            if (player.getMenuState() == MenuState.NONE) {
+                game.musics.stoppausemusic();
+                game.musics.startopenworldmusic();
+            }
+        }
+
+        // Manejo para POKEMON_SELECT_FOR_ITEM (¡NUEVO!)
+        if (player.getMenuState() == MenuState.POKEMON_SELECT_FOR_ITEM) {
+            // Navegación en equipo (igual que en POKEMON_TEAM)
+            if (Gdx.input.isKeyJustPressed(Keys.UP)) {
+                player.movePokemonTeamUp();
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
+                player.movePokemonTeamDown();
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                player.movePokemonTeamLeft();
+            }
+            if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                player.movePokemonTeamRight();
+            }
+
+            // Enter para usar item en Pokémon seleccionado
+            if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                PokemonJugador pokemon = player.getPokemonSeleccionado();
+                if (pokemon != null) {
+                    boolean usado = player.usarItemEnPokemon(pokemon);
+                    if (usado) {
+                        // Si se usó el item, volver al inventario
+                        player.setMenuState(MenuState.INVENTORY);
+                    }
+                    // Si no se usó (pokémon con salud llena), se queda en esta pantalla
                 }
             }
 
-            // Tecla ESC para retroceder
-            if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
-                player.goBack();
-                if(player.getMenuState()== MenuState.NONE){
-                    game.musics.stoppausemusic();
-                    game.musics.startopenworldmusic();
-                }
+            // B para cancelar (además de ESC)
+            if (Gdx.input.isKeyJustPressed(Keys.B)) {
+                player.cancelarUsoItem();
+                player.setMenuState(MenuState.INVENTORY);
             }
 
+            // ¡IMPORTANTE! Salir del switch para que no entre en otros manejos
+            return;
+        }
 
-
-            // Manejo de entrada según el estado del menú
-            if (player.getMenuState() != MenuState.NONE) {
-                // PRIMERO: Manejo específico para CRAFTING
-                if (player.getMenuState() == MenuState.CRAFTING) {
-                    if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
-                        player.moverSeleccionCrafteoArriba();
-                    }
-                    if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
-                        player.moverSeleccionCrafteoAbajo();
-                    }
-                    if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-                        boolean exito = player.intentarCraftear();
-                        if (exito) {
-                            System.out.println("¡Ítem crafteado con éxito!");
-                        } else {
-                            System.out.println("No tienes los materiales necesarios.");
-                        }
-                    }
-                }
-                if (player.getMenuState() == MenuState.POKEMON_TEAM) {
-                    // Navegación en equipo (2 columnas)
+        // Manejo de entrada según el estado del menú
+        if (player.getMenuState() != MenuState.NONE) {
+            // PRIMERO: Manejo específico para POKEDEX
+            if (player.getMenuState() == MenuState.POKEDEX) {
+                // Si no hay especie seleccionada = estamos en lista
+                if (player.getPokedexSelectedSpecies() == null) {
                     if (Gdx.input.isKeyJustPressed(Keys.UP)) {
-                        player.movePokemonTeamUp();
+                        player.movePokedexUp();
                     }
                     if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
-                        player.movePokemonTeamDown();
+                        player.movePokedexDown();
                     }
                     if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
-                        player.movePokemonTeamLeft();
+                        player.prevPokedexPage();
                     }
                     if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
-                        player.movePokemonTeamRight();
+                        player.nextPokedexPage();
                     }
+                    if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                        // Obtener la especie seleccionada
+                        List<PokedexEntry> entradas = player.getEntrenador().getPokedex().getEntradasOrdenadas();
+                        int inicio = player.getPokedexPage() * player.POKEDEX_ENTRIES_PER_PAGE;
+                        int indice = inicio + player.getPokedexSelection();
 
-                    // A (o ENTER) para ver detalles
-                    if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.A)) {
-                        if (player.getPokemonSeleccionado() != null) {
-                            player.setMenuState(MenuState.POKEMON_DETAIL);
-                            player.setPokemonDetailTab(0); // Empezar en primera pestaña
+                        if (indice < entradas.size()) {
+                            player.setPokedexSelectedSpecies(entradas.get(indice).getEspecie());
                         }
                     }
-
-                    // B (o ESC) para volver al menú principal
                     if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
                         player.setMenuState(MenuState.MAIN);
+                        player.setPokedexSelectedSpecies(null); // Resetear
                     }
                 }
-
-                if (player.getMenuState() == MenuState.POKEMON_DETAIL) {
-                    // ←→ para cambiar pestañas
-                    if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
-                        player.prevPokemonDetailTab();
-                    }
-                    if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
-                        player.nextPokemonDetailTab();
-                    }
-
-                    // B (o ESC) para volver al equipo
-                    if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
-                        player.setMenuState(MenuState.POKEMON_TEAM);
-                    }
-                }
-                // SEGUNDO: Manejo para otros menús
+                // Si hay especie seleccionada = estamos en vista detalle
                 else {
-                    // Flechas para navegar (para todos los menús excepto CRAFTING)
-                    if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
-                        player.moveMenuUp();
+                    if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                        player.setPokedexSelectedSpecies(null); // Volver a lista
                     }
-                    if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
-                        player.moveMenuDown();
-                    }
+                }
+            }
 
-                    // Enter para seleccionar
-                    if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-                        player.selectMenuItem();
+            // Manejo para CRAFTING (existente)
+            if (player.getMenuState() == MenuState.CRAFTING) {
+                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                    player.moverSeleccionCrafteoArriba();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                    player.moverSeleccionCrafteoAbajo();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                    boolean exito = player.intentarCraftear();
+                    if (exito) {
+                        System.out.println("¡Ítem crafteado con éxito!");
+                    } else {
+                        System.out.println("No tienes los materiales necesarios.");
+                    }
+                }
+            }
+
+            // Manejo para POKEMON_TEAM (existente)
+            if (player.getMenuState() == MenuState.POKEMON_TEAM) {
+                // Navegación en equipo (2 columnas)
+                if (Gdx.input.isKeyJustPressed(Keys.UP)) {
+                    player.movePokemonTeamUp();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
+                    player.movePokemonTeamDown();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                    player.movePokemonTeamLeft();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                    player.movePokemonTeamRight();
+                }
+
+                // A (o ENTER) para ver detalles
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.A)) {
+                    if (player.getPokemonSeleccionado() != null) {
+                        player.setMenuState(MenuState.POKEMON_DETAIL);
+                        player.setPokemonDetailTab(0);
                     }
                 }
 
-                // TERCERO: Manejo específico para INVENTORY con item seleccionado
-                // (esto es independiente, puede coexistir con la navegación)
-                if (player.getMenuState() == MenuState.INVENTORY && player.getItemSeleccionado() != null) {
-                    if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
-                        player.usarItemSeleccionado();
-                        player.cancelarSeleccionItem();
+                // B (o ESC) para volver al menú principal
+                if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                    player.setMenuState(MenuState.MAIN);
+                }
+            }
+
+            // Manejo para POKEMON_DETAIL (existente)
+            if (player.getMenuState() == MenuState.POKEMON_DETAIL) {
+                if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                    player.prevPokemonDetailTab();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                    player.nextPokemonDetailTab();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                    player.setMenuState(MenuState.POKEMON_TEAM);
+                }
+            }
+
+            // SEGUNDO: Manejo para otros menús (excepto POKEDEX)
+            else if (player.getMenuState() != MenuState.POKEDEX) {
+                // Flechas para navegar
+                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                    player.moveMenuUp();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                    player.moveMenuDown();
+                }
+
+                // Enter para seleccionar
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                    player.selectMenuItem();
+                }
+            }
+
+            // TERCERO: Manejo específico para INVENTORY con item seleccionado
+            if (player.getMenuState() == MenuState.INVENTORY) {
+                // Navegación por columnas
+                if (Gdx.input.isKeyJustPressed(Keys.LEFT) || Gdx.input.isKeyJustPressed(Keys.A)) {
+                    player.moveInventoryLeft();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.RIGHT) || Gdx.input.isKeyJustPressed(Keys.D)) {
+                    player.moveInventoryRight();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.W)) {
+                    player.moveInventoryUp();
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN) || Gdx.input.isKeyJustPressed(Keys.S)) {
+                    player.moveInventoryDown();
+                    // Validar límite basado en los items de la columna actual
+                    validarLimiteInventario();
+                }
+
+                // Enter para seleccionar
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                    PokemonJugador pokemon = player.getPokemonSeleccionado();
+                    if (pokemon != null) {
+                        boolean usado = player.usarItemEnPokemon(pokemon);
+                        if (usado) {
+                            // ¡Vuelve al inventario!
+                            player.setMenuState(MenuState.INVENTORY);
+                        }
                     }
-                    if (Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
-                        player.tirarItemSeleccionado();
-                        player.cancelarSeleccionItem();
-                    }
-                    if (Gdx.input.isKeyJustPressed(Keys.NUM_3)) {
-                        player.cancelarSeleccionItem();
-                        System.out.println("Selección cancelada");
-                    }
+                }
+
+                // ESC para volver
+                if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+                    player.cancelarUsoItem();
+                    player.setMenuState(MenuState.INVENTORY);
                 }
             }
         }
@@ -458,6 +582,9 @@ public class GameScreen implements Screen {
             case INVENTORY:
                 dibujarInventario(screenWidth, screenHeight);
                 break;
+            case POKEMON_SELECT_FOR_ITEM:
+                dibujarSeleccionPokemonParaItem(screenWidth, screenHeight);
+                break;
             case POKEMON_TEAM:
                 dibujarEquipoPokemon(screenWidth, screenHeight);
                 // NO dibujar instrucciones generales aquí
@@ -483,7 +610,8 @@ public class GameScreen implements Screen {
         // Instrucciones generales SOLO para algunos menús
         // NO para Pokémon Team/Detail
         if (player.getMenuState() != MenuState.POKEMON_TEAM &&
-            player.getMenuState() != MenuState.POKEMON_DETAIL) {
+            player.getMenuState() != MenuState.POKEMON_DETAIL &&
+            player.getMenuState() != MenuState.POKEDEX) {
             dibujarInstrucciones(screenWidth, screenHeight);
         }
 
@@ -526,85 +654,193 @@ public class GameScreen implements Screen {
     }
 
     // Inventario
-    // Solo muestro la parte modificada del método dibujarInventario()
-    // Inventario - CON SELECCIÓN VISUAL
     private void dibujarInventario(int screenWidth, int screenHeight) {
+        Inventario inv = player.getInventario();
+
+        // Obtener items por categoría
+        List<Ranura> recursos = new ArrayList<>();
+        List<Ranura> pociones = new ArrayList<>();
+        List<Ranura> pokeballs = new ArrayList<>();
+
+        for (Ranura slot : inv.getRanuras()) {
+            Item item = slot.getItem();
+            if (item instanceof Curacion) {
+                pociones.add(slot);
+            } else if (item instanceof Pokeball) {
+                pokeballs.add(slot);
+            } else {
+                recursos.add(slot);
+            }
+        }
+
+        // 1. FONDO Y TÍTULO
+        spriteBatch.setColor(new Color(0.1f, 0.1f, 0.15f, 0.95f));
+        spriteBatch.draw(whitePixel, 0, 0, screenWidth, screenHeight);
+        spriteBatch.setColor(Color.WHITE);
+
         font.getData().setScale(1.8f);
-        font.draw(spriteBatch, "INVENTARIO", screenWidth / 2 - 80, screenHeight - 80);
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
+        font.draw(spriteBatch, "INVENTARIO", 350, screenHeight - 50);
         font.getData().setScale(1.0f);
 
-        Inventario inv = player.getInventario();
-        String capacidad = "Capacidad: " + inv.getCantidadTotal() +
-            "/" + inv.getCapacidadMaxima() + " ítems";
-        String slotsInfo = "(" + inv.getCantidadItems() + " tipos diferentes)";
+        // 2. CAPACIDAD
+        String capacidad = "Capacidad: " + inv.getCantidadTotal() + "/" + inv.getCapacidadMaxima();
+        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
+        font.draw(spriteBatch, capacidad, 50, screenHeight - 100);
 
-        font.draw(spriteBatch, capacidad, screenWidth / 2 - 100, screenHeight - 120);
-        font.draw(spriteBatch, slotsInfo, screenWidth / 2 - 100, screenHeight - 140);
+        // 3. DISEÑO DE 3 COLUMNAS CON SELECTOR
+        float colRecursosX = 50;
+        float colPocionesX = 300;
+        float colPokeballsX = 550;
+        float startY = screenHeight - 150;
+        float espacio = 30;
 
-        // Mostrar Poké Balls y Pociones destacados
-        Ranura pokeballs = player.getInventario().buscarItem("Poké Ball");
-        Ranura pociones = player.getInventario().buscarItem("Poción");
+        int columnaActual = player.getInventoryColumna();
+        int indiceActual = player.getInventoryIndice();
 
-        float y = screenHeight - 170;
-        if (pokeballs != null) {
-            font.draw(spriteBatch, "Poké Balls: " + pokeballs.getCantidad(), screenWidth * 0.2f, y);
+        // Dibujar cada columna con el selector apropiado
+        dibujarColumnaConSelector(spriteBatch, "RECURSOS", recursos, colRecursosX, startY, espacio,
+            columnaActual == 0 ? indiceActual : -1);
+
+        dibujarColumnaConSelector(spriteBatch, "POCIONES", pociones, colPocionesX, startY, espacio,
+            columnaActual == 1 ? indiceActual : -1);
+
+        dibujarColumnaConSelector(spriteBatch, "POKÉ BALLS", pokeballs, colPokeballsX, startY, espacio,
+            columnaActual == 2 ? indiceActual : -1);
+
+        // 4. OBTENER ITEM SELECCIONADO PARA MOSTRAR INFO
+        Ranura itemSeleccionado = null;
+        switch (columnaActual) {
+            case 0:
+                if (indiceActual < recursos.size()) {
+                    itemSeleccionado = recursos.get(indiceActual);
+                }
+                break;
+            case 1:
+                if (indiceActual < pociones.size()) {
+                    itemSeleccionado = pociones.get(indiceActual);
+                }
+                break;
+            case 2:
+                if (indiceActual < pokeballs.size()) {
+                    itemSeleccionado = pokeballs.get(indiceActual);
+                }
+                break;
         }
-        if (pociones != null) {
-            font.draw(spriteBatch, "Pociones: " + pociones.getCantidad(), screenWidth * 0.6f, y);
-        }
 
-        // Lista de todos los items CON SELECCIÓN
-        float startX = screenWidth * 0.2f;
-        float startY = y - 50;
-        float espacio = 25;
-
-        List<Ranura> slots = player.getInventario().getRanuras();
-
-        // Si hay un item seleccionado, mostrarlo destacado
-        Ranura itemSeleccionado = player.getItemSeleccionado();
-        int indiceSeleccionado = -1;
+        // 5. MOSTRAR INFORMACIÓN DEL ITEM SELECCIONADO
         if (itemSeleccionado != null) {
-            for (int i = 0; i < slots.size(); i++) {
-                if (slots.get(i).getItem().getNombre().equals(itemSeleccionado.getItem().getNombre())) {
-                    indiceSeleccionado = i;
+            dibujarInfoItem(itemSeleccionado, screenWidth, screenHeight);
+
+            // Dibujar flecha indicadora de columna
+            float flechaX = 0;
+            switch (columnaActual) {
+                case 0: flechaX = colRecursosX - 40; break;
+                case 1: flechaX = colPocionesX - 40; break;
+                case 2: flechaX = colPokeballsX - 40; break;
+            }
+
+            font.setColor(Color.YELLOW);
+            font.draw(spriteBatch, "▶", flechaX, startY - (indiceActual * espacio));
+        }
+
+        // 6. INSTRUCCIONES
+        font.setColor(new Color(0.6f, 0.6f, 0.8f, 1));
+        String instrucciones = "←→: Cambiar columna  ↑↓: Navegar  Enter: Seleccionar  ESC: Volver";
+        font.draw(spriteBatch, instrucciones, 200, 50);
+    }
+
+    // Método auxiliar para dibujar columna
+    private void dibujarColumnaInventario(SpriteBatch batch, String titulo,
+                                          List<Ranura> items, float x, float y,
+                                          float espacio, int seleccionGlobal, int offset) {
+        font.setColor(new Color(0.8f, 0.8f, 1.0f, 1));
+        font.draw(batch, titulo, x, y);
+        y -= 30;
+
+        for (int i = 0; i < items.size(); i++) {
+            Ranura slot = items.get(i);
+            boolean seleccionado = (seleccionGlobal == offset + i);
+
+            // Fondo para item seleccionado
+            if (seleccionado) {
+                batch.setColor(new Color(0.3f, 0.3f, 0.5f, 0.8f));
+                batch.draw(whitePixel, x - 10, y - 20, 200, 25);
+                batch.setColor(Color.WHITE);
+
+                font.setColor(Color.YELLOW);
+                font.draw(batch, "▶ " + slot.getItem().getNombre() + " x" + slot.getCantidad(), x, y);
+                font.setColor(new Color(0.8f, 0.8f, 1.0f, 1));
+            } else {
+                font.draw(batch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), x, y);
+            }
+            y -= espacio;
+        }
+    }
+
+    // Método para dibujar información del item seleccionado
+    private void dibujarInfoItem(Ranura slot, int screenWidth, int screenHeight) {
+        float panelX = 50;
+        float panelY = 150;
+        float panelAncho = screenWidth - 100;
+        float panelAlto = 80;
+
+        // Fondo del panel
+        spriteBatch.setColor(new Color(0.15f, 0.15f, 0.2f, 0.9f));
+        spriteBatch.draw(whitePixel, panelX, panelY, panelAncho, panelAlto);
+        spriteBatch.setColor(Color.WHITE);
+
+        // Borde
+        spriteBatch.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
+        spriteBatch.draw(whitePixel, panelX, panelY, panelAncho, 2);
+        spriteBatch.draw(whitePixel, panelX, panelY + panelAlto, panelAncho, 2);
+        spriteBatch.setColor(Color.WHITE);
+
+        // Información
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
+        font.draw(spriteBatch, slot.getItem().getNombre(), panelX + 10, panelY + panelAlto - 20);
+
+        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
+        font.draw(spriteBatch, "Cantidad: " + slot.getCantidad(), panelX + 10, panelY + panelAlto - 45);
+
+        // Descripción con ajuste de línea
+        String desc = slot.getItem().getDescripcion();
+        if (desc.length() > 60) {
+            // Dividir en líneas
+            int splitIndex = 60;
+            for (int i = 60; i >= 0; i--) {
+                if (desc.charAt(i) == ' ') {
+                    splitIndex = i;
                     break;
                 }
             }
+
+            String linea1 = desc.substring(0, splitIndex);
+            String linea2 = desc.substring(splitIndex + 1);
+
+            font.draw(spriteBatch, linea1, panelX + 10, panelY + panelAlto - 70);
+            font.draw(spriteBatch, linea2, panelX + 10, panelY + panelAlto - 95);
+        } else {
+            font.draw(spriteBatch, desc, panelX + 10, panelY + panelAlto - 70);
         }
 
-        for (int i = 0; i < slots.size(); i++) {
-            Ranura slot = slots.get(i);
-            float itemY = startY - i * espacio;
-
-            if (itemY < 100) {
-                startX += 200;
-                startY = y - 50;
-                i--;
-                continue;
-            }
-
-            // Resaltar item seleccionado
-            if (i == indiceSeleccionado) {
-                font.setColor(Color.YELLOW);
-                font.draw(spriteBatch, "> " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
-                font.setColor(Color.WHITE);
-            }
-            // Resaltar item en el que está el cursor del menú
-            else if (i == player.getMenuSelection()) {
-                font.setColor(Color.CYAN);
-                font.draw(spriteBatch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
-                font.setColor(Color.WHITE);
-            } else {
-                font.draw(spriteBatch, "• " + slot.getItem().getNombre() + " x" + slot.getCantidad(), startX, itemY);
-            }
-        }
-
-        // Mostrar instrucciones si hay item seleccionado
-        if (itemSeleccionado != null) {
-            font.draw(spriteBatch, "ITEM SELECCIONADO: " + itemSeleccionado.getItem().getNombre(),
-                screenWidth * 0.6f, screenHeight - 200);
-            font.draw(spriteBatch, "1: Usar | 2: Tirar 1 | 3: Cancelar",
-                screenWidth * 0.6f, screenHeight - 230);
+        // Uso específico según tipo
+        font.setColor(new Color(0.5f, 0.8f, 1.0f, 1));
+        if (slot.getItem() instanceof Curacion) {
+            Curacion pocion = (Curacion) slot.getItem();
+            font.draw(spriteBatch, "Cura: " + pocion.getHpRestaurado() + " PS",
+                panelX + 200, panelY + panelAlto - 45);
+            font.draw(spriteBatch, "Enter: Usar en Pokémon",
+                panelX + 200, panelY + panelAlto - 70);
+        } else if (slot.getItem() instanceof Pokeball) {
+            Pokeball ball = (Pokeball) slot.getItem();
+            font.draw(spriteBatch, "Captura: " + ball.getTasaCaptura() + "x",
+                panelX + 200, panelY + panelAlto - 45);
+            font.draw(spriteBatch, "Solo en combate",
+                panelX + 200, panelY + panelAlto - 70);
+        } else {
+            font.draw(spriteBatch, "Para crafteo",
+                panelX + 200, panelY + panelAlto - 45);
         }
     }
 
@@ -713,7 +949,7 @@ public class GameScreen implements Screen {
                 font.draw(spriteBatch, "Nv. " + p.getNivel(), x + slotAncho - 70, y + 80);
 
                 // Barra de PS - ajustada por el sprite
-                float porcentajePS = (float)p.getPsActual() / p.getPsMaximos();
+                float porcentajePS = (float) p.getPsActual() / p.getPsMaximos();
                 float barraAncho = 220;
                 float barraY = y + 55;
 
@@ -966,7 +1202,7 @@ public class GameScreen implements Screen {
         font.draw(spriteBatch, "PS", x, y);
 
         float psAncho = ancho * 0.7f; // Más angosta para dejar espacio
-        float porcentajePS = (float)p.getPsActual() / p.getPsMaximos();
+        float porcentajePS = (float) p.getPsActual() / p.getPsMaximos();
 
         // Posicionar barra DEBAJO del texto, no al mismo nivel
         float barraY = y - 25; // 25px debajo del texto "PS"
@@ -1012,7 +1248,7 @@ public class GameScreen implements Screen {
 
             // Barra de stat
             float maxStat = 200;
-            float porcentajeStat = Math.min(1.0f, (float)stats[i] / maxStat);
+            float porcentajeStat = Math.min(1.0f, (float) stats[i] / maxStat);
             float statAncho = ancho * 0.5f; // Más angosta
 
             spriteBatch.setColor(new Color(0.85f, 0.85f, 0.9f, 1));
@@ -1111,7 +1347,7 @@ public class GameScreen implements Screen {
             String pp = m.getPpActual() + "/" + m.getPpMax();
 
             // Color del texto de PP según la cantidad
-            float ppPorcentaje = (float)m.getPpActual() / m.getPpMax();
+            float ppPorcentaje = (float) m.getPpActual() / m.getPpMax();
             if (ppPorcentaje > 0.5) {
                 font.setColor(new Color(0.0f, 0.5f, 0.0f, 1)); // Verde oscuro
             } else if (ppPorcentaje > 0.2) {
@@ -1145,7 +1381,7 @@ public class GameScreen implements Screen {
         // Placeholder - puedes implementar sistema de naturalezas después
         font.setColor(new Color(0.8f, 0.4f, 0.2f, 1)); // Color naranja
         font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "SERIO", x + ancho/2 - 30, y);
+        font.draw(spriteBatch, "SERIO", x + ancho / 2 - 30, y);
         font.getData().setScale(1.0f);
 
         y -= 50;
@@ -1245,20 +1481,61 @@ public class GameScreen implements Screen {
         // En su lugar, podemos agregar un mensaje o dejar espacio
         font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
         font.getData().setScale(0.9f);
-        font.draw(spriteBatch, "Datos de captura", x + ancho/2 - 50, y - 20);
+        font.draw(spriteBatch, "Datos de captura", x + ancho / 2 - 50, y - 20);
         font.getData().setScale(1.0f);
     }
 
     // Método auxiliar para colores de tipo
     private Color getColorPorTipo(Tipo tipo) {
         switch (tipo) {
-            case FUEGO: return new Color(0.9f, 0.3f, 0.1f, 1);
-            case AGUA: return new Color(0.1f, 0.5f, 0.9f, 1);
-            case PLANTA: return new Color(0.2f, 0.7f, 0.2f, 1);
-            case ELECTRICO: return new Color(0.9f, 0.9f, 0.1f, 1);
-            case NORMAL: return new Color(0.7f, 0.7f, 0.6f, 1);
-            default: return new Color(0.5f, 0.5f, 0.5f, 1);
+            case FUEGO:
+                return new Color(0.9f, 0.3f, 0.1f, 1);
+            case AGUA:
+                return new Color(0.1f, 0.5f, 0.9f, 1);
+            case PLANTA:
+                return new Color(0.2f, 0.7f, 0.2f, 1);
+            case ELECTRICO:
+                return new Color(0.9f, 0.9f, 0.1f, 1);
+            case NORMAL:
+                return new Color(0.7f, 0.7f, 0.6f, 1);
+            default:
+                return new Color(0.5f, 0.5f, 0.5f, 1);
         }
+    }
+
+    private void dibujarSeleccionPokemonParaItem(int screenWidth, int screenHeight) {
+        // Usar el mismo dibujo del equipo pero con instrucciones diferentes
+        dibujarEquipoPokemon(screenWidth, screenHeight);
+
+        // Fondo semitransparente en la parte superior
+        spriteBatch.setColor(0, 0, 0, 0.7f);
+        spriteBatch.draw(whitePixel, 0, screenHeight - 100, screenWidth, 100);
+        spriteBatch.setColor(Color.WHITE);
+
+        // Información del item
+        Item item = player.getSelectedItem();
+        if (item != null) {
+            font.setColor(Color.YELLOW);
+            font.getData().setScale(1.2f);
+            font.draw(spriteBatch, "USAR: " + item.getNombre(), 50, screenHeight - 40);
+            font.getData().setScale(1.0f);
+
+            font.setColor(new Color(0.8f, 0.8f, 1.0f, 1));
+            font.draw(spriteBatch, item.getDescripcion(), 50, screenHeight - 70);
+
+            // Info específica si es curación
+            if (item instanceof Curacion) {
+                Curacion pocion = (Curacion) item;
+                font.draw(spriteBatch, "Cura " + pocion.getHpRestaurado() + " PS",
+                    screenWidth - 200, screenHeight - 40);
+            }
+        }
+
+        // Instrucciones
+        font.setColor(new Color(0.6f, 0.6f, 0.8f, 1));
+        String instrucciones = "Selecciona un Pokémon  Enter: Curar  ESC: Cancelar";
+        font.draw(spriteBatch, instrucciones, 250, 50);
+
     }
 
     private void dibujarCrafteo(int screenWidth, int screenHeight) {
@@ -1429,7 +1706,7 @@ public class GameScreen implements Screen {
             detallesY -= 20;
             font.setColor(Color.WHITE);
 
-            switch(recetaSeleccionada.id) {
+            switch (recetaSeleccionada.id) {
                 case 1:
                     font.draw(spriteBatch, "• 1x Poké Ball", columnaDetallesX, detallesY);
                     font.draw(spriteBatch, "  (Tasa captura: 1.0x)", columnaDetallesX + 10, detallesY - 18);
@@ -1451,13 +1728,9 @@ public class GameScreen implements Screen {
     }
 
     // Pokédex (placeholder)
+    // Pokédex - REEMPLAZAR COMPLETAMENTE
     private void dibujarPokedex(int screenWidth, int screenHeight) {
-        font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "POKÉDEX", screenWidth / 2 - 60, screenHeight - 100);
-        font.getData().setScale(1.0f);
-
-        font.draw(spriteBatch, "Registro de Pokémon investigados", screenWidth / 2 - 140, screenHeight / 2);
-        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+        pokedexScreen.dibujar(spriteBatch, screenWidth, screenHeight);
     }
 
     // Guardar (placeholder)
@@ -1555,13 +1828,18 @@ public class GameScreen implements Screen {
             case OPTIONS:
                 instrucciones = "Flechas: Navegar opciones | Enter: Seleccionar | ESC: Volver al menú principal";
                 break;
+            // NO agregar case para POKEDEX - dejamos que la Pokédex maneje sus propias instrucciones
             default:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC: Volver";
                 break;
         }
 
-        float instruccionWidth = font.getData().scaleX * instrucciones.length() * 6;
-        font.draw(spriteBatch, instrucciones, (screenWidth - instruccionWidth) / 2, 50);
+        // Solo dibujar si hay instrucciones
+        if (!instrucciones.isEmpty()) {
+            float instruccionWidth = font.getData().scaleX * instrucciones.length() * 6;
+            font.draw(spriteBatch, instrucciones, (screenWidth - instruccionWidth) / 2, 50);
+        }
+
         font.getData().setScale(1.0f);
     }
 
@@ -1579,106 +1857,6 @@ public class GameScreen implements Screen {
         spriteBatch.setProjectionMatrix(camara.combined);
     }
 
-    // AGREGAR este método para manejar combate:
-    private void manejarCombate(float delta) {
-        // Aquí irá la lógica de la interfaz de combate
-        // Mostrará los Pokémon, PS, movimientos, etc.
-
-        // Por ahora, solo dibujamos
-        if (combateActivo != null && combateActivo.isCombateTerminado()) {
-            // Combate terminado
-            terminarCombate();
-        }
-    }
-
-
-    // AGREGAR método para manejar entrada en combate:
-    // EN GameScreen.java, en el método manejarEntradaCombate():
-    private void manejarEntradaCombate() {
-        if (combateActivo.isTurnoJugador()) {
-            // Teclas 1-4 para usar movimientos
-            if (Gdx.input.isKeyJustPressed(Keys.NUM_1)) {
-                combateActivo.ejecutarTurnoJugador(0);
-            }
-            if (Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
-                combateActivo.ejecutarTurnoJugador(1);
-            }
-            if (Gdx.input.isKeyJustPressed(Keys.NUM_3)) {
-                combateActivo.ejecutarTurnoJugador(2);
-            }
-            if (Gdx.input.isKeyJustPressed(Keys.NUM_4)) {
-                combateActivo.ejecutarTurnoJugador(3);
-            }
-
-            // Tecla B para usar Poké Ball (CORREGIDO)
-            if (Gdx.input.isKeyJustPressed(Keys.B)) {
-                if (pokemonSalvajeActual instanceof PokemonSalvaje) {
-                    // Verificar si hay Poké Balls en inventario
-                    Ranura pokeballsSlot = player.getInventario().buscarItem("Poké Ball");
-                    if (pokeballsSlot != null && pokeballsSlot.getCantidad() > 0) {
-                        // Obtener multiplicador de la Poké Ball
-                        Item itemPokeball = pokeballsSlot.getItem();
-                        float multiplicador = 1.0f; // Default
-
-                        // Determinar multiplicador según tipo de Poké Ball
-                        if (itemPokeball instanceof Pokeball) {
-                            Pokeball pokeball = (Pokeball) itemPokeball;
-                            multiplicador = pokeball.getTasaCaptura();
-                        }
-
-                        // Usar Poké Ball
-                        pokeballsSlot.usarCantidad(1);
-                        boolean exitoCaptura = combateActivo.intentarCaptura(multiplicador);
-
-                        if (exitoCaptura) {
-                            // Convertir a Pokémon jugador y agregar al equipo
-                            PokemonJugador pokemonCapturado = ((PokemonSalvaje)pokemonSalvajeActual).convertirAJugador();
-                            boolean agregado = player.getEntrenador().agregarPokemon(pokemonCapturado);
-
-                            if (agregado) {
-                                System.out.println("¡Has capturado a " + pokemonCapturado.getNombre() + "!");
-                            } else {
-                                System.out.println("¡Equipo lleno! No puedes llevar más Pokémon.");
-                            }
-                        }
-                    } else {
-                        System.out.println("¡No tienes Poké Balls!");
-                    }
-                }
-            }
-
-            // Tecla C para cambiar Pokémon
-            if (Gdx.input.isKeyJustPressed(Keys.C)) {
-                player.setMenuState(MenuState.CAMBIO_POKEMON);
-            }
-        }
-    }
-
-    // AGREGAR método para terminar combate:
-    private void terminarCombate() {
-        if (combateActivo == null) return;
-
-        Pokemon ganador = combateActivo.getGanador();
-        Pokemon perdedor = combateActivo.getPerdedor();
-
-        if (ganador == player.getEntrenador().getPokemonActual()) {
-            System.out.println("¡Has ganado el combate!");
-            // Dar experiencia al Pokémon
-            int expGanada = pokemonSalvajeActual.getNivel() * 10;
-            if (player.getEntrenador().getPokemonActual() instanceof PokemonJugador) {
-                ((PokemonJugador)player.getEntrenador().getPokemonActual()).ganarExperiencia(expGanada);
-            }
-        } else {
-            System.out.println("¡Has perdido el combate!");
-        }
-
-        // Limpiar
-        combateActivo = null;
-        pokemonSalvajeActual = null;
-        enCombate = false;
-        player.setMenuState(MenuState.NONE);
-    }
-
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height);
@@ -1690,6 +1868,11 @@ public class GameScreen implements Screen {
         if (mapa != null) mapa.dispose();
         if (renderer != null) renderer.dispose();
         if (spriteBatch != null) spriteBatch.dispose();
+
+        if (pokedexScreen != null) {
+            pokedexScreen.dispose();
+        }
+
         if (player != null) {
             // Liberar sprites de los Pokémon del jugador
             Entrenador entrenador = player.getEntrenador();
@@ -1704,6 +1887,185 @@ public class GameScreen implements Screen {
         }
         if (font != null) font.dispose();
         if (whitePixel != null) whitePixel.dispose();
+
+        // ❌ NO hay combateActivo que disponer
+    }
+
+    private String obtenerNombreMapaActual() {
+        if (currentMapFile == null) return "Ubicación desconocida";
+
+        // Extraer nombre del archivo sin extensión ni path
+        String nombreArchivo = currentMapFile.substring(currentMapFile.lastIndexOf('/') + 1);
+        nombreArchivo = nombreArchivo.replace(".tmx", "");
+
+        // Reemplazar guiones bajos por espacios
+        nombreArchivo = nombreArchivo.replace("_", " ");
+
+        // Capitalizar primera letra de cada palabra
+        String[] palabras = nombreArchivo.split(" ");
+        StringBuilder nombreFormateado = new StringBuilder();
+
+        for (String palabra : palabras) {
+            if (!palabra.isEmpty()) {
+                nombreFormateado.append(Character.toUpperCase(palabra.charAt(0)))
+                    .append(palabra.substring(1).toLowerCase())
+                    .append(" ");
+            }
+        }
+
+        return nombreFormateado.toString().trim();
+    }
+
+    private String obtenerNombreMapaParaEncuentros() {
+        if (currentMapFile == null) return "mapa_centro";
+
+        // Extraer solo el nombre del archivo sin extensión
+        String nombreArchivo = currentMapFile.substring(
+            currentMapFile.lastIndexOf('/') + 1,
+            currentMapFile.lastIndexOf('.')
+        );
+
+        // Convertir a minúsculas
+        return nombreArchivo.toLowerCase();
+    }
+
+    public void iniciarCombate(PokemonSalvaje pokemonSalvaje) {
+        // Detener música del mundo abierto
+        if (game.musics != null) {
+            game.musics.stopopenworldmusic();
+        }
+
+        // Restablecer cooldown de encuentros
+        encountersManager.resetEncounterCooldown();
+
+        // Crear combate con el Pokémon actual del jugador
+        Pokemon pokemonJugador = player.getEntrenador().getPokemonActual();
+        if (pokemonJugador == null || pokemonJugador.estaDebilitado()) {
+            // Buscar primer Pokémon no debilitado
+            for (PokemonJugador p : player.getEntrenador().getEquipo()) {
+                if (!p.estaDebilitado()) {
+                    pokemonJugador = p;
+                    player.getEntrenador().setPokemonActual(p);
+                    break;
+                }
+            }
+        }
+
+        // Si no hay Pokémon disponibles, no se puede combatir
+        if (pokemonJugador == null || pokemonJugador.estaDebilitado()) {
+            System.out.println("¡Todos tus Pokémon están debilitados!");
+            if (game.musics != null) {
+                game.musics.startopenworldmusic();
+            }
+            return;
+        }
+
+        // Obtener ubicación actual formateada
+        String ubicacion = obtenerNombreMapaActual();
+
+        // Registrar avistamiento en Pokédex
+        player.getEntrenador().registrarAvistamientoPokemon(
+            pokemonSalvaje.getEspecie().getNombre(),
+            ubicacion
+        );
+
+        // Crear combate
+        Combate combate = new Combate(pokemonJugador, pokemonSalvaje);
+
+        // Cambiar a pantalla de combate PASANDO LA UBICACIÓN
+        game.setScreen(new CombateScreen(game, this, combate, player));
+    }
+
+    // Este método se llama desde CombateScreen para reanudar el juego
+    public void reanudarDespuesCombate() {
+        // Restaurar música del mundo
+        if (game.musics != null) {
+            game.musics.startopenworldmusic();
+        }
+
+        // Asegurar que el jugador no esté en menú
+        player.setMenuState(MenuState.NONE);
+    }
+
+    private void validarLimiteInventario() {
+        Inventario inv = player.getInventario();
+        List<Ranura> itemsColumna = obtenerItemsPorColumna(player.getInventoryColumna(), inv);
+
+        if (player.getInventoryIndice() >= itemsColumna.size()) {
+            player.setInventoryIndice(Math.max(0, itemsColumna.size() - 1));
+        }
+    }
+
+    private void dibujarColumnaConSelector(SpriteBatch batch, String titulo,
+                                           List<Ranura> items, float x, float y,
+                                           float espacio, int indiceSeleccionado) {
+        font.setColor(new Color(0.8f, 0.8f, 1.0f, 1));
+        font.draw(batch, titulo, x, y);
+        y -= 30;
+
+        for (int i = 0; i < items.size(); i++) {
+            Ranura slot = items.get(i);
+            boolean seleccionado = (i == indiceSeleccionado);
+
+            // Color según tipo de item
+            if (slot.getItem() instanceof Curacion) {
+                font.setColor(seleccionado ? Color.YELLOW : new Color(0.5f, 1.0f, 0.5f, 1));
+            } else if (slot.getItem() instanceof Pokeball) {
+                font.setColor(seleccionado ? Color.YELLOW : new Color(1.0f, 0.5f, 0.5f, 1));
+            } else {
+                font.setColor(seleccionado ? Color.YELLOW : new Color(0.8f, 0.8f, 1.0f, 1));
+            }
+
+            // Fondo para item seleccionado
+            if (seleccionado) {
+                batch.setColor(new Color(0.3f, 0.3f, 0.5f, 0.8f));
+                batch.draw(whitePixel, x - 10, y - 20, 200, 25);
+                batch.setColor(Color.WHITE);
+            }
+
+            font.draw(batch, slot.getItem().getNombre() + " x" + slot.getCantidad(), x, y);
+            y -= espacio;
+        }
+    }
+
+    // Método auxiliar para obtener items por columna
+    private List<Ranura> obtenerItemsPorColumna(int columna, Inventario inv) {
+        List<Ranura> resultado = new ArrayList<>();
+
+        for (Ranura slot : inv.getRanuras()) {
+            Item item = slot.getItem();
+
+            switch (columna) {
+                case 0: // Recursos
+                    if (!(item instanceof Curacion) && !(item instanceof Pokeball)) {
+                        resultado.add(slot);
+                    }
+                    break;
+                case 1: // Pociones
+                    if (item instanceof Curacion) {
+                        resultado.add(slot);
+                    }
+                    break;
+                case 2: // Poké Balls
+                    if (item instanceof Pokeball) {
+                        resultado.add(slot);
+                    }
+                    break;
+            }
+        }
+
+        return resultado;
+    }
+
+    private int calcularNivelPromedioEquipo() {
+        List<PokemonJugador> equipo = player.getEntrenador().getEquipo();
+        if (equipo.isEmpty()) return 5;
+
+        int total = 0;
+        for (PokemonJugador p : equipo) {
+            total += p.getNivel();
+        }
+        return total / equipo.size();
     }
 
     @Override public void pause() {}

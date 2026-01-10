@@ -43,24 +43,20 @@ public class Inventario {
         return true;
     }
 
+    // Reemplaza o ajusta en Inventario.java
     public boolean removerItem(String nombreItem, int cantidad) {
-        for (int i = 0; i < slots.size(); i++) {
-            Ranura slot = slots.get(i);
-            if (slot.getItem().getNombre().equals(nombreItem)) {
-                if (slot.getCantidad() < cantidad) {
-                    return false; // No hay suficiente cantidad
-                }
+        Ranura slot = buscarItem(nombreItem);
+        if (slot != null && slot.getCantidad() >= cantidad) {
+            slot.decrementar(cantidad);
+            this.cantidadTotal -= cantidad;
 
-                slot.decrementar(cantidad);
-                cantidadTotal -= cantidad;
-
-                if (slot.getCantidad() <= 0) {
-                    slots.remove(i);
-                }
-                return true;
+            // Si no quedan unidades, eliminamos la ranura de la lista
+            if (slot.getCantidad() <= 0) {
+                slots.remove(slot);
             }
+            return true;
         }
-        return false; // No existe el ítem
+        return false;
     }
 
     public Ranura buscarItem(String nombreItem) {

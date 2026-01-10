@@ -1,5 +1,6 @@
 package com.pokemon.game.pokemon;
 
+import com.pokemon.game.pokedex.PokedexManager; // NUEVO IMPORT
 import com.pokemon.game.player.Inventario;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ public class Entrenador {
     private int dinero;
     private int victorias;
     private int derrotas;
+    private PokedexManager pokedex; // NUEVO
 
     public Entrenador(String nombre, Inventario inventario) {
         this.nombre = nombre;
@@ -21,6 +23,7 @@ public class Entrenador {
         this.victorias = 0;
         this.derrotas = 0;
         this.pokemonActual = null;
+        this.pokedex = new PokedexManager(); // NUEVO
     }
 
     // Gestionar equipo
@@ -29,6 +32,9 @@ public class Entrenador {
             System.out.println("El equipo está lleno. Máximo 6 Pokémon.");
             return false;
         }
+
+        // ✅ Asegúrate de que esta línea esté presente:
+        pokemon.setEntrenador(this); // Asignar este entrenador como dueño
 
         equipo.add(pokemon);
         if (pokemonActual == null) {
@@ -45,7 +51,6 @@ public class Entrenador {
 
         Pokemon removido = equipo.remove(indice);
         if (pokemonActual == removido) {
-            // Si retiramos al Pokémon actual, elegir otro
             pokemonActual = equipo.isEmpty() ? null : equipo.get(0);
         }
         return true;
@@ -99,7 +104,6 @@ public class Entrenador {
             return false;
         }
 
-        // Si el Pokémon actual está debilitado, buscar uno sano
         if (pokemonActual == null || pokemonActual.estaDebilitado()) {
             for (Pokemon p : equipo) {
                 if (!p.estaDebilitado()) {
@@ -110,6 +114,44 @@ public class Entrenador {
         }
 
         return pokemonActual != null;
+    }
+
+    // ===== MÉTODOS DE POKÉDEX =====
+
+    public PokedexManager getPokedex() {
+        return pokedex;
+    }
+
+    public void registrarAvistamientoPokemon(String especie, String ubicacion) {
+        pokedex.registrarAvistamiento(especie, ubicacion);
+    }
+
+    public void registrarVictoriaContraPokemon(String especie) {
+        pokedex.registrarVictoriaCombate(especie);
+        victorias++; // ✅ CORRECTO - incrementar directamente
+    }
+
+    public void registrarCapturaPokemon(String especie, String ubicacion) {
+        pokedex.registrarCaptura(especie, ubicacion);
+    }
+
+    public boolean puedeEncontrarLegendario() {
+        return pokedex.puedeAparecerLegendario();
+    }
+
+    public int getEspeciesCompletamenteInvestigadas() {
+        return pokedex.getCantidadEspeciesCompletamenteInvestigadas();
+    }
+
+    public void mostrarEstadoPokedex() {
+        System.out.println("=== POKÉDEX ===");
+        System.out.println(pokedex.getResumen());
+        System.out.println("Especies completas: " +
+            pokedex.getCantidadEspeciesCompletamenteInvestigadas() + "/5");
+
+        if (puedeEncontrarLegendario()) {
+            System.out.println("¡LISTO para encontrar Pokémon legendarios!");
+        }
     }
 
     // Getters

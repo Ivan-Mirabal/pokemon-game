@@ -9,10 +9,12 @@ import com.badlogic.gdx.utils.Array;
 import com.pokemon.game.*;
 import com.pokemon.game.game.GameScreen;
 import com.pokemon.game.item.*;
+import com.pokemon.game.pokedex.PokedexEntry;
 import com.pokemon.game.pokemon.Entrenador;
 import com.pokemon.game.pokemon.FabricaPokemon;
 import com.pokemon.game.pokemon.PokemonJugador;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Player {
@@ -54,12 +56,14 @@ public class Player {
     // Variables del Menú
     private MenuState menuState;
     private int menuSelection;
-    private boolean inSubMenu;
 
     // Variables para selección de inventario
     private Ranura itemSeleccionado = null;
     private int inventarioPage = 0;
     private final int ITEMS_PER_PAGE = 10;
+
+    private Ranura selectedItemSlot = null;
+    private ItemAction selectedItemAction = null;
 
     private Crafteo sistemaCrafteo;
     private int seleccionCrafteo;
@@ -68,7 +72,16 @@ public class Player {
     private int pokemonTeamSelection = 0;
     private int pokemonDetailTab = 0; // 0: Estadísticas, 1: Movimientos, 2: Naturaleza, 3: Encontrado
 
+    private int inventarioColumna = 0; // 0: Recursos, 1: Pociones, 2: Poké Balls
+    private int inventarioIndice = 0;  // Índice dentro de la columna
+
     private Entrenador entrenador;
+
+    private int pokedexSelection = 0;           // Índice seleccionado en lista
+    private String pokedexSelectedSpecies = null; // Especie seleccionada
+    private int pokedexPage = 0;                // Paginación
+    public final int POKEDEX_ENTRIES_PER_PAGE = 10; // 10 por página
+
 
 
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
@@ -105,16 +118,12 @@ public class Player {
         // Dar Pokémon inicial (ejemplo: Pikachu nivel 5)
         PokemonJugador inicial = FabricaPokemon.crearPokemonJugador("Pikachu", 5, "Pika");
         entrenador.agregarPokemon(inicial);
-        PokemonJugador bulbasaur = FabricaPokemon.crearPokemonJugador("Bulbasaur", 8, "Bulby");
-        entrenador.agregarPokemon(bulbasaur);
-
-        PokemonJugador squirtle = FabricaPokemon.crearPokemonJugador("Squirtle", 7, "Squirty");
-        entrenador.agregarPokemon(squirtle);
+        PokemonJugador charizard = FabricaPokemon.crearPokemonJugador("Charizard", 8, "Jorge");
+        entrenador.agregarPokemon(charizard);
 
         // INICIALIZAR ESTADO DEL MENÚ
         this.menuState = MenuState.NONE;
         this.menuSelection = 0;
-        this.inSubMenu = false;
 
         // CORRECCIÓN: Usar nombres consistentes
 
@@ -251,7 +260,33 @@ public class Player {
     public void setMenuState(MenuState state) {
         this.menuState = state;
         this.menuSelection = 0; // Resetear selección al cambiar estado
-        this.inSubMenu = (state != MenuState.MAIN && state != MenuState.NONE);
+
+        // Ya NO usamos inSubMenu - lo eliminamos
+        // this.inSubMenu = (state != MenuState.MAIN && state != MenuState.NONE);
+
+        // Reset adicional para ciertos estados
+        switch (state) {
+            case INVENTORY:
+                cancelarUsoItem();
+                inventarioPage = 0;
+                inventarioColumna = 0;
+                inventarioIndice = 0;
+                break;
+            case POKEDEX:
+                pokedexSelectedSpecies = null; // Resetear especie seleccionada
+                pokedexSelection = 0;
+                pokedexPage = 0;
+                break;
+            case POKEMON_TEAM:
+                pokemonTeamSelection = 0; // Empezar en primer Pokémon
+                break;
+            case CRAFTING:
+                seleccionCrafteo = 0; // Resetear selección de crafteo
+                break;
+            case OPTIONS:
+                menuSelection = 0; // Empezar en primera opción
+                break;
+        }
     }
 
     public void toggleMenu() {
@@ -290,18 +325,7 @@ public class Player {
                 handleMainMenuSelection();
                 break;
             case INVENTORY:
-                // Tu código existente para inventario
-                List<Ranura> slots = inventario.getRanuras();
-                if (!slots.isEmpty()) {
-                    int indiceReal = menuSelection + (inventarioPage * ITEMS_PER_PAGE);
-                    if (indiceReal < slots.size()) {
-                        itemSeleccionado = slots.get(indiceReal);
-                        System.out.println("=== ITEM SELECCIONADO ===");
-                        System.out.println("Nombre: " + itemSeleccionado.getItem().getNombre());
-                        System.out.println("Cantidad: " + itemSeleccionado.getCantidad());
-                        System.out.println("Descripción: " + itemSeleccionado.getItem().getDescripcion());
-                    }
-                }
+                handleInventorySelection();
                 break;
             case OPTIONS:
                 // ¡ESTO ES LO QUE ESTABA MAL! Ahora funciona:
@@ -326,11 +350,52 @@ public class Player {
         }
     }
 
+    public boolean isSelectingPokemonForItem() {
+        return menuState == MenuState.POKEMON_SELECT_FOR_ITEM;
+    }
+
+    public Item getSelectedItem() {
+        return selectedItemSlot != null ? selectedItemSlot.getItem() : null;
+    }
+
     public void goBack() {
-        if (inSubMenu) {
-            setMenuState(MenuState.MAIN);
-        } else {
-            setMenuState(MenuState.NONE);
+        switch (menuState) {
+            case NONE:
+                // Ya no estamos en menú, no hacer nada
+                break;
+
+            case MAIN:
+                // Desde menú principal, salir del menú completamente
+                setMenuState(MenuState.NONE);
+                break;
+
+            case INVENTORY:
+            case POKEDEX:
+            case CRAFTING:
+            case SAVE:
+            case OPTIONS:
+            case POKEMON_TEAM:
+            case POKEMON_DETAIL:
+                // Desde cualquier submenú, volver al menú principal
+                setMenuState(MenuState.MAIN);
+                break;
+
+            case POKEMON_SELECT_FOR_ITEM:
+                // Cancelar uso de item y volver al inventario
+                cancelarUsoItem();
+                setMenuState(MenuState.INVENTORY);
+                break;
+
+            case ITEM_SELECTED:
+                // Cancelar selección de item (por si acaso)
+                cancelarUsoItem();
+                setMenuState(MenuState.INVENTORY);
+                break;
+
+            default:
+                // Por defecto, volver al menú principal
+                setMenuState(MenuState.MAIN);
+                break;
         }
     }
 
@@ -342,13 +407,17 @@ public class Player {
                 break;
             case 1: // Pokédex
                 setMenuState(MenuState.POKEDEX);
+                // RESETEAR la Pokédex a vista de lista
+                setPokedexSelectedSpecies(null);
+                setPokedexPage(0);
+                setPokedexSelection(0);
                 break;
             case 2: // Inventario
                 setMenuState(MenuState.INVENTORY);
                 break;
             case 3: // Crafteo
                 setMenuState(MenuState.CRAFTING);
-                seleccionCrafteo = 0; // Resetear selección de crafteo
+                seleccionCrafteo = 0;
                 break;
             case 4: // Guardar partida
                 setMenuState(MenuState.SAVE);
@@ -360,6 +429,107 @@ public class Player {
         }
     }
 
+    private void handleInventorySelection() {
+        Inventario inv = getInventario();
+
+        // Obtener items de la columna actual
+        List<Ranura> itemsColumna = new ArrayList<>();
+        switch (inventarioColumna) {
+            case 0: // Recursos
+                for (Ranura slot : inv.getRanuras()) {
+                    Item item = slot.getItem();
+                    if (!(item instanceof Curacion) && !(item instanceof Pokeball)) {
+                        itemsColumna.add(slot);
+                    }
+                }
+                break;
+            case 1: // Pociones
+                for (Ranura slot : inv.getRanuras()) {
+                    if (slot.getItem() instanceof Curacion) {
+                        itemsColumna.add(slot);
+                    }
+                }
+                break;
+            case 2: // Poké Balls
+                for (Ranura slot : inv.getRanuras()) {
+                    if (slot.getItem() instanceof Pokeball) {
+                        itemsColumna.add(slot);
+                    }
+                }
+                break;
+        }
+
+        // Verificar que el índice sea válido
+        if (inventarioIndice >= itemsColumna.size()) {
+            return;
+        }
+
+        Ranura slot = itemsColumna.get(inventarioIndice);
+        Item item = slot.getItem();
+
+        // SOLO las Pociones cambian de estado
+        if (item instanceof Curacion) {
+            selectedItemSlot = slot;
+            selectedItemAction = ItemAction.USE_ON_POKEMON;
+            setMenuState(MenuState.POKEMON_SELECT_FOR_ITEM);
+            pokemonTeamSelection = 0;
+        } else if (item instanceof Pokeball) {
+            System.out.println("Las Poké Balls solo se pueden usar en combate.");
+        } else {
+            System.out.println(item.getNombre() + ": " + item.getDescripcion());
+            System.out.println("Cantidad: " + slot.getCantidad());
+        }
+    }
+
+    public boolean usarItemEnPokemon(PokemonJugador pokemon) {
+        if (selectedItemSlot == null || selectedItemAction != ItemAction.USE_ON_POKEMON) {
+            return false;
+        }
+
+        Item item = selectedItemSlot.getItem();
+        if (!(item instanceof Curacion)) {
+            return false;
+        }
+
+        Curacion pocion = (Curacion) item;
+
+        // 1. Verificar si el Pokémon está debilitado
+        if (pokemon.estaDebilitado()) {
+            System.out.println(pokemon.getApodo() + " está debilitado. Necesitas un Revivir.");
+            return false;
+        }
+
+        // 2. Verificar si ya tiene toda la salud
+        if (pokemon.getPsActual() >= pokemon.getPsMaximos()) {
+            System.out.println(pokemon.getApodo() + " ya tiene toda la salud.");
+            return false;
+        }
+
+        // 3. Calcular curación
+        int psAntes = pokemon.getPsActual();
+        pokemon.curar(pocion.getHpRestaurado());
+        int curacionReal = pokemon.getPsActual() - psAntes;
+
+        // 4. Consumir item
+        selectedItemSlot.decrementar(1);
+        if (selectedItemSlot.getCantidad() <= 0) {
+            inventario.removerItem(selectedItemSlot.getItem().getNombre(), 0);
+        }
+
+        System.out.println("¡Usaste " + item.getNombre() + " en " +
+            pokemon.getApodo() + "! (+" + curacionReal + " PS)");
+
+        // 5. Resetear
+        selectedItemSlot = null;
+        selectedItemAction = ItemAction.NONE;
+        return true; // ¡IMPORTANTE! Devolver true para indicar éxito
+    }
+
+    public void cancelarUsoItem() {
+        selectedItemSlot = null;
+        selectedItemAction = ItemAction.NONE;
+    }
+
     private int getMaxMenuItems() {
         switch (menuState) {
             case MAIN:
@@ -367,7 +537,13 @@ public class Player {
             case INVENTORY:
                 return this.getInventario().getRanuras().size();
             case OPTIONS:
-                return 4; // ← ¡CORRECTO! 4 opciones en el menú de opciones
+                return 4;
+            case POKEDEX:
+                // Para la Pokédex, el máximo es el número de entradas en la página actual
+                List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
+                int inicio = pokedexPage * POKEDEX_ENTRIES_PER_PAGE;
+                int fin = Math.min(inicio + POKEDEX_ENTRIES_PER_PAGE, entradas.size());
+                return fin - inicio;
             default:
                 return 0;
         }
@@ -496,16 +672,12 @@ public class Player {
         List<PokemonJugador> equipo = getEntrenador().getEquipo();
         if (equipo.isEmpty()) return null;
 
-        // Usar pokemonTeamSelection, que es la ÚNICA variable de selección
-        int indice = pokemonTeamSelection;
-
-        // Asegurar que el índice esté dentro del equipo
-        if (indice >= equipo.size()) {
-            // Si seleccionas un slot vacío, ir al último Pokémon disponible
-            indice = equipo.size() - 1;
+        // Asegurarnos de que la selección esté dentro de los límites
+        if (pokemonTeamSelection >= equipo.size()) {
+            pokemonTeamSelection = 0;
         }
 
-        return equipo.get(indice);
+        return equipo.get(pokemonTeamSelection);
     }
 
     // Método auxiliar (privado)
@@ -589,4 +761,104 @@ public class Player {
     public void setPokemonTeamSelection(int sel) { pokemonTeamSelection = sel; }
     public void setPokemonDetailTab(int tab) { pokemonDetailTab = tab; }
 
+    // ===== MÉTODOS PARA CONTROL DE POKÉDEX =====
+
+    public int getPokedexSelection() {
+        return pokedexSelection;
+    }
+
+    public void setPokedexSelection(int selection) {
+        this.pokedexSelection = selection;
+    }
+
+    public String getPokedexSelectedSpecies() {
+        return pokedexSelectedSpecies;
+    }
+
+    // AGREGAR este método:
+    public void setPokedexSelectedSpecies(String species) {
+        this.pokedexSelectedSpecies = species;
+    }
+
+    public int getPokedexPage() {
+        return pokedexPage;
+    }
+
+    public void setPokedexPage(int page) {
+        this.pokedexPage = page;
+    }
+
+    // REEMPLAZAR los métodos existentes por estos:
+
+    public void movePokedexUp() {
+        List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
+        int inicio = pokedexPage * POKEDEX_ENTRIES_PER_PAGE;
+        int fin = Math.min(inicio + POKEDEX_ENTRIES_PER_PAGE, entradas.size());
+        int entradasEnPagina = fin - inicio;
+
+        if (entradasEnPagina == 0) return;
+
+        pokedexSelection--;
+        if (pokedexSelection < 0) {
+            pokedexSelection = entradasEnPagina - 1;
+        }
+    }
+
+    public void movePokedexDown() {
+        List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
+        int inicio = pokedexPage * POKEDEX_ENTRIES_PER_PAGE;
+        int fin = Math.min(inicio + POKEDEX_ENTRIES_PER_PAGE, entradas.size());
+        int entradasEnPagina = fin - inicio;
+
+        if (entradasEnPagina == 0) return;
+
+        pokedexSelection++;
+        if (pokedexSelection >= entradasEnPagina) {
+            pokedexSelection = 0;
+        }
+    }
+
+    public void nextPokedexPage() {
+        List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
+        int totalPaginas = (int) Math.ceil(entradas.size() / (float) POKEDEX_ENTRIES_PER_PAGE);
+
+        if (pokedexPage < totalPaginas - 1) {
+            pokedexPage++;
+            pokedexSelection = 0; // Resetear selección al cambiar página
+        }
+    }
+
+    public void prevPokedexPage() {
+        if (pokedexPage > 0) {
+            pokedexPage--;
+            pokedexSelection = 0; // Resetear selección al cambiar página
+        }
+    }
+
+    public void moveInventoryLeft() {
+        inventarioColumna = (inventarioColumna - 1 + 3) % 3;
+        inventarioIndice = 0; // Resetear índice al cambiar de columna
+    }
+
+    public void moveInventoryRight() {
+        inventarioColumna = (inventarioColumna + 1) % 3;
+        inventarioIndice = 0;
+    }
+
+    public void moveInventoryUp() {
+        inventarioIndice = Math.max(0, inventarioIndice - 1);
+    }
+
+    public void moveInventoryDown() {
+        // El límite depende de la columna actual y los items
+        inventarioIndice++; // El límite se valida en GameScreen
+    }
+
+    public boolean isMoving(){
+        return isMoving;
+    }
+
+    public int getInventoryColumna() { return inventarioColumna; }
+    public int getInventoryIndice() { return inventarioIndice; }
+    public void setInventoryIndice(int indice) { this.inventarioIndice = indice; }
 }

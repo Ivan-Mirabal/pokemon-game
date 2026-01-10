@@ -17,6 +17,7 @@ public enum Tipo {
     FANTASMA,
     DRAGON,
     ACERO,
+    HADA,
     SINIESTRO;
 
     // Tabla de efectividad simplificada (sólo algunos tipos para ejemplo)

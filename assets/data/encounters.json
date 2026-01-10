@@ -1,0 +1,28 @@
+{
+  "encounters": {
+    "mapa_centro": [
+      {"species": "Pikachu", "probability": 10, "minLevel": 2, "maxLevel": 4},
+      {"species": "Snivy", "probability": 15, "minLevel": 5, "maxLevel": 8},
+      {"species": "Farfetch'd", "probability": 15, "minLevel": 4, "maxLevel": 6},
+      {"species": "Ralts", "probability": 10, "minLevel": 5, "maxLevel": 7},
+      {"species": "Zorua", "probability": 10, "minLevel": 6, "maxLevel": 9}
+    ],
+    "mapa_norte": [
+      {"species": "Pikachu", "probability": 10, "minLevel": 4, "maxLevel": 6},
+      {"species": "Machop", "probability": 10, "minLevel": 10, "maxLevel": 14},
+      {"species": "Onix", "probability": 10, "minLevel": 12, "maxLevel": 16}
+    ],
+    "mapa_oeste": [
+      {"species": "Onix", "probability": 15, "minLevel": 10, "maxLevel": 12},
+      {"species": "Meowth", "probability": 15, "minLevel": 8, "maxLevel": 12},
+      {"species": "Abra", "probability": 15, "minLevel": 7, "maxLevel": 10},
+      {"species": "Ditto", "probability": 20, "minLevel": 10, "maxLevel": 15}
+    ],
+    "mapa_este": [
+      {"species": "Magikarp", "probability": 50, "minLevel": 5, "maxLevel": 15},
+      {"species": "Sandile", "probability": 10, "minLevel": 10, "maxLevel": 13},
+      {"species": "Drilbur", "probability": 10, "minLevel": 11, "maxLevel": 14},
+      {"species": "Krokorok", "probability": 10, "minLevel": 15, "maxLevel": 18}
+    ]
+  }
+}

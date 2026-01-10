@@ -5,11 +5,22 @@ import com.pokemon.game.item.Item;
 public class PokemonJugador extends Pokemon {
     private int amistad; // 0-255
     private Item objetoEquipado;
+    private Entrenador entrenador; // ✅ NUEVO: Campo para el entrenador dueño
 
     public PokemonJugador(EspeciePokemon especie, String apodo, int nivel) {
         super(especie, apodo, nivel);
         this.amistad = 70;
         this.objetoEquipado = null;
+        this.entrenador = null; // ✅ Inicialmente sin entrenador
+    }
+
+    // ✅ NUEVO: Métodos getter y setter para entrenador
+    public Entrenador getEntrenador() {
+        return entrenador;
+    }
+
+    public void setEntrenador(Entrenador entrenador) {
+        this.entrenador = entrenador;
     }
 
     // Sistema de experiencia
@@ -69,6 +80,9 @@ public class PokemonJugador extends Pokemon {
         // Copiar experiencia
         evolucion.experiencia = experiencia;
 
+        // ✅ NUEVO: También copiar el entrenador
+        evolucion.setEntrenador(this.entrenador);
+
         System.out.println("¡" + apodo + " ha evolucionado a " + nuevaEspecie.getNombre() + "!");
         return evolucion;
     }
@@ -111,7 +125,9 @@ public class PokemonJugador extends Pokemon {
             // Reemplazar este Pokémon con su evolución
             PokemonJugador evolucion = evolucionar(nuevaEspecie);
 
-            // Reemplazar en el equipo (esto debería hacerse fuera de la clase)
+            // ✅ NUEVO: También deberías reemplazar en el equipo del entrenador
+            // Esto es más complejo y debería hacerse fuera de esta clase
+            // Por ahora, solo mostramos el mensaje
             System.out.println("Evolución completada!");
         }
     }

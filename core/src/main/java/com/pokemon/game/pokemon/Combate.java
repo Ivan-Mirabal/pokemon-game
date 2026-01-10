@@ -1,5 +1,7 @@
 package com.pokemon.game.pokemon;
 
+import com.pokemon.game.item.Pokeball;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,6 +11,7 @@ public class Combate {
     private boolean turnoJugador;
     private List<String> historial;
     private boolean combateTerminado;
+    private String motivoFin; // "victoria", "derrota", "captura", "huida"
 
     public enum ResultadoTurno {
         EXITO,
@@ -24,6 +27,7 @@ public class Combate {
         this.pokemonRival = rival;
         this.historial = new ArrayList<>();
         this.combateTerminado = false;
+        this.motivoFin = null;
 
         // Determinar quién va primero por velocidad
         turnoJugador = jugador.getVelocidad() >= rival.getVelocidad();
@@ -50,7 +54,7 @@ public class Combate {
         }
 
         if (pokemonJugador.estaDebilitado() || pokemonRival.estaDebilitado()) {
-            combateTerminado = true;
+            // No terminar el combate aquí, dejar que CombateScreen maneje
             return ResultadoTurno.COMBATE_TERMINADO;
         }
 
@@ -79,26 +83,32 @@ public class Combate {
             // Verificar si el rival fue debilitado
             if (pokemonRival.estaDebilitado()) {
                 registrarEvento("¡" + pokemonRival.getNombre() + " fue debilitado!");
+
+                // Registrar victoria si el Pokémon jugador es un PokemonJugador
+                if (pokemonJugador instanceof PokemonJugador) {
+                    PokemonJugador pj = (PokemonJugador) pokemonJugador;
+                    if (pj.getEntrenador() != null) {
+                        pj.getEntrenador().registrarVictoriaContraPokemon(
+                            pokemonRival.getEspecie().getNombre()
+                        );
+                    }
+                }
+
                 combateTerminado = true;
+                motivoFin = "victoria";
                 return ResultadoTurno.POKEMON_DEBILITADO;
             }
         }
 
-        // Cambiar turno y ejecutar turno rival
+        // Cambiar turno
         turnoJugador = false;
-
-        // Si el rival sigue vivo, ejecutar su turno
-        if (!pokemonRival.estaDebilitado()) {
-            ejecutarTurnoRival();
-        }
 
         return ResultadoTurno.EXITO;
     }
 
     // Turno del rival (IA simple)
-    private void ejecutarTurnoRival() {
+    public void ejecutarTurnoRival() {
         if (pokemonJugador.estaDebilitado() || pokemonRival.estaDebilitado()) {
-            combateTerminado = true;
             return;
         }
 
@@ -115,10 +125,9 @@ public class Combate {
                     registrarEvento(pokemonRival.getNombre() + " usa " + movimiento.getNombre() +
                         " y causa " + daño + " puntos de daño!");
 
-                    // Verificar si el jugador fue debilitado
                     if (pokemonJugador.estaDebilitado()) {
                         registrarEvento("¡" + pokemonJugador.getNombre() + " fue debilitado!");
-                        combateTerminado = true;
+                        // No terminar el combate aquí - dejar que el jugador cambie
                     }
                 }
                 break;
@@ -130,25 +139,140 @@ public class Combate {
     }
 
     // Método para intentar captura durante el combate
-    public boolean intentarCaptura(float multiplicadorBall) {
-        if (!(pokemonRival instanceof PokemonSalvaje)) {
-            registrarEvento("¡No puedes capturar este Pokémon!");
+    // Método para intentar captura durante el combate
+    public boolean intentarCaptura(Entrenador entrenador, Pokeball ball) {
+        // 1. Intentar gastar el ítem
+        boolean gastado = entrenador.getInventario().removerItem(ball.getNombre(), 1);
+
+        if (!gastado) {
+            registrarEvento("¡No tienes más " + ball.getNombre() + "!");
             return false;
         }
 
-        PokemonSalvaje salvaje = (PokemonSalvaje) pokemonRival;
+        // 2. Calcular éxito
         double porcentajePs = (double)pokemonRival.getPsActual() / pokemonRival.getPsMaximos();
-        boolean exito = salvaje.intentarCaptura(multiplicadorBall, porcentajePs);
+        double probabilidad = (ball.getTasaCaptura() * 0.25) / (porcentajePs + 0.1);
+        boolean exito = Math.random() < probabilidad;
 
         if (exito) {
-            registrarEvento("¡Enhorabuena! Has capturado a " + pokemonRival.getNombre() + "!");
+            registrarEvento("¡Atrapaste a " + pokemonRival.getNombre() + "!");
+
+            // 3. Crear la instancia para el jugador y añadir al equipo
+            PokemonJugador nuevo;
+
+            if (pokemonRival instanceof PokemonSalvaje) {
+                // ✅ USAR CONVERSIÓN QUE COPIA MOVIMIENTOS
+                PokemonSalvaje salvaje = (PokemonSalvaje) pokemonRival;
+                nuevo = salvaje.convertirAJugador();
+
+                // Mantener nombre personalizado si tenía apodo
+                String nombreRival = pokemonRival.getNombre();
+                String nombreEspecie = pokemonRival.getEspecie().getNombre();
+                if (!nombreRival.equals(nombreEspecie)) {
+                    nuevo.setApodo(nombreRival);
+                }
+
+                System.out.println("✅ Movimientos copiados: " + nuevo.getMovimientos().size());
+            } else {
+                // Para compatibilidad con Pokémon de entrenadores
+                nuevo = new PokemonJugador(
+                    pokemonRival.getEspecie(),
+                    pokemonRival.getNombre(),
+                    pokemonRival.getNivel()
+                );
+
+                // Copiar movimientos manualmente
+                for (Movimiento movimiento : pokemonRival.getMovimientos()) {
+                    Movimiento copia = new Movimiento(
+                        movimiento.getNombre(),
+                        movimiento.getTipo(),
+                        movimiento.getPotencia(),
+                        movimiento.getPrecision(),
+                        movimiento.getPpMax(),
+                        movimiento.isEsFisico(),
+                        movimiento.getDescripcion()
+                    );
+                    copia.restaurarTodo();
+                    nuevo.aprenderMovimiento(copia);
+                }
+            }
+
+            // 4. Añadir al equipo del entrenador
+            boolean añadido = entrenador.agregarPokemon(nuevo);
+            if (!añadido) {
+                registrarEvento("¡Pero el equipo estaba lleno!");
+            }
+
+            // 5. Registrar captura en la Pokédex
+            entrenador.registrarCapturaPokemon(
+                pokemonRival.getEspecie().getNombre(),
+                "En combate"
+            );
+
             combateTerminado = true;
+            motivoFin = "captura";
+            return true;
         } else {
-            registrarEvento("¡Oh no! " + pokemonRival.getNombre() + " ha escapado de la Poké Ball.");
-            // El combate continúa
+            registrarEvento(pokemonRival.getNombre() + " se liberó...");
+            turnoJugador = false; // El turno pasa al rival por fallar
+            return false;
+        }
+    }
+
+    public ResultadoTurno cambiarPokemon(Pokemon nuevoPokemon) {
+        if (combateTerminado) {
+            return ResultadoTurno.COMBATE_TERMINADO;
+        }
+
+        if (!turnoJugador) {
+            return ResultadoTurno.NO_ES_TU_TURNO;
+        }
+
+        if (nuevoPokemon.estaDebilitado()) {
+            return ResultadoTurno.POKEMON_DEBILITADO;
+        }
+
+        if (nuevoPokemon == pokemonJugador) {
+            registrarEvento("¡" + nuevoPokemon.getNombre() + " ya está en combate!");
+            return ResultadoTurno.MOVIMIENTO_INVALIDO;
+        }
+
+        // Cambiar Pokémon
+        pokemonJugador = nuevoPokemon;
+        registrarEvento("¡Adelante " + pokemonJugador.getNombre() + "!");
+
+        // Cambiar turno
+        turnoJugador = false;
+
+        return ResultadoTurno.EXITO;
+    }
+
+    // Método para intentar huir
+    public boolean intentarHuir() {
+        // Fórmula simple basada en velocidad
+        double probabilidad = (double) pokemonJugador.getVelocidad() /
+            (pokemonJugador.getVelocidad() + pokemonRival.getVelocidad());
+
+        boolean exito = Math.random() < probabilidad;
+
+        if (exito) {
+            registrarEvento("¡Has huido con éxito!");
+            combateTerminado = true;
+            motivoFin = "huida";
+        } else {
+            registrarEvento("¡No has podido huir!");
+            // Si fallas, el rival ataca
+            turnoJugador = false;
+            ejecutarTurnoRival();
         }
 
         return exito;
+    }
+
+    // Método para registrar derrota por equipo completo
+    public void registrarDerrotaCompleta() {
+        combateTerminado = true;
+        motivoFin = "derrota";
     }
 
     // Getters
@@ -157,6 +281,7 @@ public class Combate {
     public boolean isTurnoJugador() { return turnoJugador; }
     public boolean isCombateTerminado() { return combateTerminado; }
     public List<String> getHistorial() { return new ArrayList<>(historial); }
+    public String getMotivoFin() { return motivoFin; }
 
     public Pokemon getGanador() {
         if (!combateTerminado) return null;

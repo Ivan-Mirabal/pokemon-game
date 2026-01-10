@@ -2,28 +2,28 @@ package com.pokemon.game.game;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class PokemonGame extends Game {
+    public SpriteBatch batch; // Añade esto
     public Musics musics;
 
     @Override
     public void create() {
-        musics=new Musics();
-        // Iniciar con la SplashScreen
+        batch = new SpriteBatch(); // Créalo una sola vez
+        musics = new Musics();
         setScreen(new SplashScreen(this));
     }
 
     @Override
     public void setScreen(Screen screen) {
-        Screen oldScreen = getScreen();
-        if (oldScreen != null) {
-            oldScreen.dispose();
-        }
+        // Elimina el bloque oldScreen.dispose()
         super.setScreen(screen);
     }
 
     @Override
     public void dispose() {
+        if (batch != null) batch.dispose();
         musics.disposemenumusic();
         musics.disposeopenworldmusic();
         Screen current = getScreen();

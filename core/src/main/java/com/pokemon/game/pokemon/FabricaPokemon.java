@@ -1,163 +1,269 @@
 package com.pokemon.game.pokemon;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.pokemon.game.data.DataLoader;
+import com.pokemon.game.data.DataLoader.SpeciesData;
+import com.pokemon.game.data.DataLoader.MoveData;
+import java.util.*;
 
 public class FabricaPokemon {
-    // Mapa de especies
-    private static final Map<String, EspeciePokemon> especies = new HashMap<>();
+    private static final Map<String, EspeciePokemon> especiesCache = new HashMap<>();
+    private static final Map<String, Movimiento> movimientosCache = new HashMap<>();
 
     static {
-        // Inicializar especies con datos de evolución
-        especies.put("Pikachu", new EspeciePokemon(
-            "Pikachu", Tipo.ELECTRICO, null,
-            35, 55, 40, 50, 50, 90,
-            Habilidad.ELECTRICIDAD_ESTATICA, 190,
-            "Raichu",  // Evoluciona a Raichu
-            30,        // Nivel 30
-            "Piedratrueno"  // Con Piedratrueno
-        ));
-
-        especies.put("Raichu", new EspeciePokemon(
-            "Raichu", Tipo.ELECTRICO, null,
-            60, 90, 55, 90, 80, 110,
-            Habilidad.ELECTRICIDAD_ESTATICA, 75,
-            null,      // No evoluciona más
-            0,         // Sin nivel de evolución
-            null       // Sin item de evolución
-        ));
-
-        especies.put("Charmander", new EspeciePokemon(
-            "Charmander", Tipo.FUEGO, null,
-            39, 52, 43, 60, 50, 65,
-            Habilidad.FUEGO_INTERIOR, 45,
-            "Charmeleon",  // Evoluciona a Charmeleon
-            16,            // Nivel 16
-            null
-        ));
-
-        especies.put("Charmeleon", new EspeciePokemon(
-            "Charmeleon", Tipo.FUEGO, null,
-            58, 64, 58, 80, 65, 80,
-            Habilidad.FUEGO_INTERIOR, 45,
-            "Charizard",   // Evoluciona a Charizard
-            36,            // Nivel 36
-            null
-        ));
-
-        especies.put("Charizard", new EspeciePokemon(
-            "Charizard", Tipo.FUEGO, Tipo.VOLADOR,
-            78, 84, 78, 109, 85, 100,
-            Habilidad.FUEGO_INTERIOR, 45,
-            null,      // No evoluciona más
-            0,         // Sin nivel de evolución
-            null       // Sin item de evolución
-        ));
-
-        especies.put("Bulbasaur", new EspeciePokemon(
-            "Bulbasaur", Tipo.PLANTA, Tipo.VENENO,
-            45, 49, 49, 65, 65, 45,
-            Habilidad.ESPESURA, 45,
-            "Ivysaur",   // Evoluciona a Ivysaur
-            16,          // Nivel 16
-            null
-        ));
-
-        especies.put("Squirtle", new EspeciePokemon(
-            "Squirtle", Tipo.AGUA, null,
-            44, 48, 65, 50, 64, 43,
-            Habilidad.REGENERACION, 45,
-            "Wartortle",  // Evoluciona a Wartortle
-            16,           // Nivel 16
-            null
-        ));
-
-        especies.put("Gengar", new EspeciePokemon(
-            "Gengar", Tipo.FANTASMA, Tipo.VENENO,
-            60, 65, 60, 130, 75, 110,
-            Habilidad.VISTA_LINCE, 45,
-            null,      // No evoluciona más
-            0,         // Sin nivel de evolución
-            null
-        ));
+        System.out.println("Inicializando fábrica de Pokémon...");
+        cargarEspeciesDesdeJSON();
+        cargarMovimientosDesdeJSON();
+        System.out.println("Fábrica lista.");
     }
 
-    // Crear Pokémon para el jugador
+    private static void cargarEspeciesDesdeJSON() {
+        Map<String, SpeciesData> datos = DataLoader.getInstance().getAllSpeciesData();
+
+        for (SpeciesData data : datos.values()) {
+            try {
+                // Convertir strings a enums
+                Tipo tipo1 = Tipo.valueOf(data.type1.toUpperCase());
+                Tipo tipo2 = data.type2 != null ? Tipo.valueOf(data.type2.toUpperCase()) : null;
+
+                Habilidad habilidad = Habilidad.valueOf(data.ability.toUpperCase());
+
+                // Convertir evolución
+                String evolucion = data.evolvesTo;
+                int nivelEvolucion = data.evolutionLevel;
+                String itemEvolucion = data.evolutionItem;
+
+                // Crear la especie
+                EspeciePokemon especie = new EspeciePokemon(
+                    data.name,
+                    tipo1,
+                    tipo2,
+                    data.baseHP,
+                    data.baseAttack,
+                    data.baseDefense,
+                    data.baseSpecialAttack,
+                    data.baseSpecialDefense,
+                    data.baseSpeed,
+                    habilidad,
+                    data.catchRate,
+                    evolucion,
+                    nivelEvolucion,
+                    itemEvolucion
+                );
+
+                especiesCache.put(data.name, especie);
+                System.out.println("✓ Especie creada: " + data.name);
+
+            } catch (Exception e) {
+                System.err.println("Error creando especie " + data.name + ": " + e.getMessage());
+            }
+        }
+    }
+
+    private static void cargarMovimientosDesdeJSON() {
+        // Los movimientos se cargan bajo demanda en getMovimiento()
+    }
+
+    // ===== MÉTODOS PÚBLICOS PRINCIPALES =====
+
     public static PokemonJugador crearPokemonJugador(String nombreEspecie, int nivel, String apodo) {
-        EspeciePokemon especie = especies.get(nombreEspecie);
+        EspeciePokemon especie = getEspecie(nombreEspecie);
         if (especie == null) {
             throw new IllegalArgumentException("Especie no encontrada: " + nombreEspecie);
         }
 
         PokemonJugador pokemon = new PokemonJugador(especie, apodo, nivel);
 
-        // Añadir movimientos según tipo
-        agregarMovimientosPorTipo(pokemon, especie.getTipo1());
+        // Asignar movimientos según tipo y nivel
+        asignarMovimientosPorTipo(pokemon, especie.getTipo1(), nivel);
 
         return pokemon;
     }
 
-    // Crear Pokémon salvaje
     public static PokemonSalvaje crearPokemonSalvaje(String nombreEspecie, int nivel) {
-        EspeciePokemon especie = especies.get(nombreEspecie);
+        EspeciePokemon especie = getEspecie(nombreEspecie);
         if (especie == null) {
             throw new IllegalArgumentException("Especie no encontrada: " + nombreEspecie);
         }
 
         PokemonSalvaje pokemon = new PokemonSalvaje(especie, nivel);
 
-        // Añadir movimientos según tipo
-        agregarMovimientosPorTipo(pokemon, especie.getTipo1());
+        // Asignar movimientos según tipo y nivel
+        asignarMovimientosPorTipo(pokemon, especie.getTipo1(), nivel);
 
         return pokemon;
     }
 
-    // Obtener evolución de una especie
-    public static EspeciePokemon getEvolucion(String nombreEspecie) {
-        EspeciePokemon especie = especies.get(nombreEspecie);
-        if (especie == null || especie.getEvolucion() == null) {
-            return null;
+    // ===== MÉTODOS AUXILIARES =====
+
+    private static EspeciePokemon getEspecie(String nombre) {
+        return especiesCache.get(nombre);
+    }
+
+    private static Movimiento getMovimiento(String nombre) {
+        // Cache de movimientos
+        if (movimientosCache.containsKey(nombre)) {
+            return movimientosCache.get(nombre);
         }
-        return especies.get(especie.getEvolucion());
+
+        // Cargar desde JSON
+        MoveData data = DataLoader.getInstance().getMoveData(nombre);
+        if (data == null) {
+            System.err.println("Movimiento no encontrado: " + nombre);
+            return crearMovimientoPorDefecto();
+        }
+
+        try {
+            Tipo tipo = Tipo.valueOf(data.type.toUpperCase());
+            boolean esFisico = data.category.equalsIgnoreCase("PHYSICAL");
+
+            Movimiento movimiento = new Movimiento(
+                data.name,
+                tipo,
+                data.power,
+                data.accuracy,
+                data.pp,
+                esFisico,
+                data.description
+            );
+
+            movimientosCache.put(nombre, movimiento);
+            return movimiento;
+
+        } catch (Exception e) {
+            System.err.println("Error creando movimiento " + nombre + ": " + e.getMessage());
+            return crearMovimientoPorDefecto();
+        }
     }
 
-    // Obtener especie por nombre
-    public static EspeciePokemon getEspecie(String nombreEspecie) {
-        return especies.get(nombreEspecie);
+    private static Movimiento crearMovimientoPorDefecto() {
+        return new Movimiento("Placaje", Tipo.NORMAL, 40, 100, 35, true, "Un ataque físico básico.");
     }
 
-    // Agregar movimientos según tipo
-    private static void agregarMovimientosPorTipo(Pokemon pokemon, Tipo tipo) {
+    private static void asignarMovimientosPorTipo(Pokemon pokemon, Tipo tipo, int nivel) {
+        // Limpiar movimientos existentes
+        while (pokemon.getMovimientos().size() > 0) {
+            pokemon.olvidarMovimiento(0);
+        }
+
+        // Asignar movimientos basados en tipo
         switch (tipo) {
             case FUEGO:
-                pokemon.aprenderMovimiento(new Movimiento("Ascuas", Tipo.FUEGO, 40, 100, 25, false, "Quema ligeramente al rival"));
-                pokemon.aprenderMovimiento(new Movimiento("Lanzallamas", Tipo.FUEGO, 90, 85, 15, false, "Puede quemar al rival"));
-                pokemon.aprenderMovimiento(new Movimiento("Giro Fuego", Tipo.FUEGO, 60, 100, 25, true, "Golpea con fuego giratorio"));
+                pokemon.aprenderMovimiento(getMovimiento("Ascuas"));
+                pokemon.aprenderMovimiento(getMovimiento("Lanzallamas"));
+                pokemon.aprenderMovimiento(getMovimiento("Giro Fuego"));
                 break;
             case AGUA:
-                pokemon.aprenderMovimiento(new Movimiento("Pistola Agua", Tipo.AGUA, 40, 100, 25, false, "Dispara agua a presión"));
-                pokemon.aprenderMovimiento(new Movimiento("Hidrobomba", Tipo.AGUA, 110, 80, 5, false, "Potente chorro de agua"));
-                pokemon.aprenderMovimiento(new Movimiento("Placaje", Tipo.NORMAL, 40, 100, 35, true, "Golpea con el cuerpo"));
+                pokemon.aprenderMovimiento(getMovimiento("Pistola Agua"));
+                pokemon.aprenderMovimiento(getMovimiento("Hidrobomba"));
+                pokemon.aprenderMovimiento(getMovimiento("Placaje"));
                 break;
             case PLANTA:
-                pokemon.aprenderMovimiento(new Movimiento("Latigo Cepa", Tipo.PLANTA, 45, 100, 25, true, "Golpea con látigos de plantas"));
-                pokemon.aprenderMovimiento(new Movimiento("Rayo Solar", Tipo.PLANTA, 120, 100, 10, false, "Absorbe luz solar para atacar"));
-                pokemon.aprenderMovimiento(new Movimiento("Drenadoras", Tipo.PLANTA, 20, 100, 10, false, "Drena PS del rival"));
+                pokemon.aprenderMovimiento(getMovimiento("Latigo Cepa"));
+                pokemon.aprenderMovimiento(getMovimiento("Rayo Solar"));
+                pokemon.aprenderMovimiento(getMovimiento("Drenadoras"));
                 break;
             case ELECTRICO:
-                pokemon.aprenderMovimiento(new Movimiento("Impactrueno", Tipo.ELECTRICO, 40, 100, 30, false, "Puede paralizar al rival"));
-                pokemon.aprenderMovimiento(new Movimiento("Rayo", Tipo.ELECTRICO, 90, 100, 15, false, "Puede paralizar al rival"));
-                pokemon.aprenderMovimiento(new Movimiento("Ataque Rápido", Tipo.NORMAL, 40, 100, 30, true, "Ataca primero siempre"));
+                pokemon.aprenderMovimiento(getMovimiento("Impactrueno"));
+                pokemon.aprenderMovimiento(getMovimiento("Rayo"));
+                pokemon.aprenderMovimiento(getMovimiento("Ataque Rápido"));
+                break;
+            case PSIQUICO:
+                pokemon.aprenderMovimiento(getMovimiento("Psicoonda"));
+                pokemon.aprenderMovimiento(getMovimiento("Golpe Cabeza"));
+                pokemon.aprenderMovimiento(getMovimiento("Ataque Rápido"));
+                break;
+            case LUCHA:
+                pokemon.aprenderMovimiento(getMovimiento("Puño Dinamico"));
+                pokemon.aprenderMovimiento(getMovimiento("Contraataque"));
+                pokemon.aprenderMovimiento(getMovimiento("Golpe Cabeza"));
                 break;
             default:
                 // Movimientos normales por defecto
-                pokemon.aprenderMovimiento(new Movimiento("Placaje", Tipo.NORMAL, 40, 100, 35, true, "Golpea con el cuerpo"));
-                pokemon.aprenderMovimiento(new Movimiento("Arañazo", Tipo.NORMAL, 40, 100, 35, true, "Araña al rival"));
-                pokemon.aprenderMovimiento(new Movimiento("Golpe Cabeza", Tipo.NORMAL, 70, 100, 15, true, "Puede hacer retroceder"));
+                pokemon.aprenderMovimiento(getMovimiento("Placaje"));
+                pokemon.aprenderMovimiento(getMovimiento("Arañazo"));
+                pokemon.aprenderMovimiento(getMovimiento("Golpe Cabeza"));
+                pokemon.aprenderMovimiento(getMovimiento("Ataque Rápido"));
                 break;
         }
 
-        // Añadir un cuarto movimiento de cobertura
-        pokemon.aprenderMovimiento(new Movimiento("Contraataque", Tipo.LUCHA, 70, 100, 20, true, "Contraataca después de recibir daño"));
+        // Si el nivel es alto, añadir un movimiento poderoso
+        if (nivel >= 20) {
+            pokemon.aprenderMovimiento(getMovimiento("Contraataque"));
+        }
+    }
+
+    // ===== MÉTODOS PARA OBTENER INFORMACIÓN =====
+
+    public static EspeciePokemon getEspeciePokemon(String nombre) {
+        return especiesCache.get(nombre);
+    }
+
+    public static List<String> getTodasEspecies() {
+        List<String> especies = new ArrayList<>(especiesCache.keySet());
+        Collections.sort(especies);
+        return especies;
+    }
+
+    public static String[] getNombresEspecies() {
+        List<String> especies = getTodasEspecies();
+        return especies.toArray(new String[0]);
+    }
+
+    public static PokemonSalvaje generarEncuentroAleatorio(String zona, int nivelBase) {
+        System.out.println("=== GENERANDO ENCUENTRO PARA ZONA: " + zona + " ===");
+
+        // Debug: mostrar todas las zonas cargadas
+        System.out.println("Zonas disponibles en datos: " +
+            DataLoader.getInstance().getEncountersForZone(zona));
+
+        List<DataLoader.EncounterData> encuentros = DataLoader.getInstance().getEncountersForZone(zona);
+
+        if (encuentros == null) {
+            System.out.println("❌ ENCUENTROS ES NULL para zona: " + zona);
+
+            // Mostrar todas las zonas cargadas
+            System.out.println("Zonas cargadas en total:");
+            // Necesitarías un método getter para ver todas las zonas
+            return crearPokemonSalvaje("Pikachu", Math.max(5, nivelBase));
+        }
+
+        if (encuentros.isEmpty()) {
+            System.out.println("⚠️ Lista de encuentros VACÍA para zona: " + zona);
+            System.out.println("⚠️ Usando Pikachu por defecto");
+            return crearPokemonSalvaje("Pikachu", Math.max(5, nivelBase));
+        }
+
+        // Mostrar encuentros disponibles
+        System.out.println("Encuentros disponibles en " + zona + ":");
+        int totalProb = 0;
+        for (DataLoader.EncounterData e : encuentros) {
+            System.out.println("  - " + e.species + " (" + e.probability + "%) Nv." + e.minLevel + "-" + e.maxLevel);
+            totalProb += e.probability;
+        }
+        System.out.println("Probabilidad total: " + totalProb + "%");
+
+        // Calcular probabilidad total
+        int random = (int)(Math.random() * totalProb);
+        int acumulado = 0;
+        DataLoader.EncounterData seleccionado = null;
+
+        for (DataLoader.EncounterData e : encuentros) {
+            acumulado += e.probability;
+            if (random < acumulado) {
+                seleccionado = e;
+                break;
+            }
+        }
+
+        if (seleccionado == null) {
+            seleccionado = encuentros.get(0);
+        }
+
+        // Generar nivel aleatorio dentro del rango
+        int nivel = seleccionado.minLevel + (int)(Math.random() * (seleccionado.maxLevel - seleccionado.minLevel + 1));
+
+        System.out.println("✅ Encuentro seleccionado: " + seleccionado.species + " Nv." + nivel);
+
+        return crearPokemonSalvaje(seleccionado.species, nivel);
     }
 }
