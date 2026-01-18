@@ -5,9 +5,27 @@
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
 			"especie": "Zorua",
 			"visto": true,
-			"vecesVisto": 1,
+			"vecesVisto": 2,
 			"primerAvistamientoUbicacion": "Mapa Centro",
 			"primerAvistamientoFecha": "17/01/2026 23:42"
+		},
+		"Snivy": {
+			"class": "com.pokemon.game.pokedex.PokedexEntry",
+			"especie": "Snivy",
+			"visto": true,
+			"nivelInvestigacion": 4,
+			"vecesVisto": 3,
+			"primerAvistamientoUbicacion": "Mapa Centro",
+			"primerAvistamientoFecha": "18/01/2026 00:03"
+		},
+		"Farfetch'd": {
+			"class": "com.pokemon.game.pokedex.PokedexEntry",
+			"especie": "Farfetch'd",
+			"visto": true,
+			"nivelInvestigacion": 6,
+			"vecesVisto": 4,
+			"primerAvistamientoUbicacion": "Mapa Centro",
+			"primerAvistamientoFecha": "18/01/2026 10:41"
 		}
 	}
 },
@@ -16,7 +34,7 @@
 		"especie": "Pikachu",
 		"apodo": "Pika",
 		"nivel": 5,
-		"psActual": 18,
+		"psActual": 0,
 		"psMaximos": 18,
 		"experiencia": 0
 	},
@@ -24,9 +42,9 @@
 		"especie": "Charizard",
 		"apodo": "Jorge",
 		"nivel": 8,
-		"psActual": 30,
+		"psActual": 0,
 		"psMaximos": 30,
-		"experiencia": 0
+		"experiencia": 210
 	}
 ],
 "inventario": [

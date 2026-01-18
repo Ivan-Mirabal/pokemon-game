@@ -871,6 +871,9 @@ public class Player {
      * Extrae los datos actuales del jugador para guardar
      */
     public SaveData extraerDatosParaGuardar() {
+
+        sanearPokemonAntesDeGuardar();
+
         SaveData datos = new SaveData();
 
         // 1. Extraer Pokédex COMPLETA
@@ -992,28 +995,49 @@ public class Player {
      */
     private PokemonJugador recrearPokemonDesdeSimple(SaveData.PokemonSimple simple) {
         try {
-            // Usar la fábrica existente para crear el Pokémon
+            // Validar datos básicos
+            if (simple.getEspecie() == null || simple.getEspecie().isEmpty()) {
+                System.err.println("❌ Especie inválida en datos guardados");
+                return null;
+            }
+
+            // Crear Pokémon
             PokemonJugador pokemon = FabricaPokemon.crearPokemonJugador(
                 simple.getEspecie(),
                 simple.getNivel(),
                 simple.getApodo()
             );
 
-            if (pokemon != null) {
-                // Ajustar PS actuales (la fábrica los pone al máximo)
-                int diferenciaPS = simple.getPsActual() - pokemon.getPsActual();
-                if (diferenciaPS != 0) {
-                    pokemon.curar(diferenciaPS);
-                }
-
-                // Ajustar experiencia (aproximado)
-                // Nota: Esto es simplificado, en un sistema real necesitarías
-                // calcular la experiencia basada en el nivel y experiencia guardada
+            if (pokemon == null) {
+                System.err.println("❌ No se pudo crear Pokémon: " + simple.getEspecie());
+                return null;
             }
 
+            // IMPORTANTE: Establecer PS actuales (no usar curar directamente)
+            int psObjetivo = Math.min(
+                Math.max(0, simple.getPsActual()), // No permitir negativos
+                pokemon.getPsMaximos() // No exceder máximos
+            );
+
+            pokemon.psActual = psObjetivo;
+
+            // ✅ NUEVO: Marcar explícitamente como debilitado si tiene 0 PS
+            if (psObjetivo <= 0) {
+                pokemon.debilitado = true;
+                pokemon.psActual = 0;
+                System.out.println("⚠️ Pokémon " + simple.getApodo() + " cargado como DEBILITADO (0 PS)");
+            } else {
+                pokemon.debilitado = false;
+            }
+
+            // Copiar experiencia
+            pokemon.experiencia = Math.max(0, simple.getExperiencia());
+
             return pokemon;
+
         } catch (Exception e) {
-            System.err.println("❌ Error recreando Pokémon: " + simple.getEspecie());
+            System.err.println("❌ Error crítico recreando Pokémon: " +
+                (simple != null ? simple.getEspecie() : "null"));
             e.printStackTrace();
             return null;
         }
@@ -1079,4 +1103,30 @@ public class Player {
             return new PokedexManager();
         }
     }
+
+    // Método para sanear datos de Pokémon antes de guardar
+    public void sanearPokemonAntesDeGuardar() {
+        if (entrenador == null) return;
+
+        for (PokemonJugador pokemon : entrenador.getEquipo()) {
+            if (pokemon != null) {
+                // Asegurar que PS actual no sea negativo
+                if (pokemon.getPsActual() < 0) {
+                    pokemon.psActual = 0;
+                }
+
+                // Asegurar que PS actual no exceda máximos
+                if (pokemon.getPsActual() > pokemon.getPsMaximos()) {
+                    pokemon.psActual = pokemon.getPsMaximos();
+                }
+
+                // Asegurar que si tiene 0 PS, esté marcado como debilitado
+                if (pokemon.getPsActual() <= 0) {
+                    pokemon.debilitado = true;
+                    pokemon.psActual = 0;
+                }
+            }
+        }
+    }
+
 }

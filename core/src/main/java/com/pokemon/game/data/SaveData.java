@@ -73,6 +73,23 @@ public class SaveData {
 
         public int getExperiencia() { return experiencia; }
         public void setExperiencia(int experiencia) { this.experiencia = experiencia; }
+
+        public void validarDatos() {
+            // PS no pueden ser negativos
+            if (psActual < 0) psActual = 0;
+            if (psMaximos < 1) psMaximos = 1; // Mínimo 1 PS máximo
+
+            // PS actual no puede exceder máximos
+            if (psActual > psMaximos) psActual = psMaximos;
+
+            // Nivel válido
+            if (nivel < 1) nivel = 1;
+            if (nivel > 100) nivel = 100;
+
+            // Experiencia no negativa
+            if (experiencia < 0) experiencia = 0;
+        }
+
     }
 
     // Slot de ítem del inventario

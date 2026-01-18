@@ -1758,7 +1758,9 @@ public class CombateScreen implements Screen {
 
         if (indiceMensaje >= mensajes.size()) {
             // Todos los mensajes de esta acción fueron mostrados
-
+            if (combate.getPokemonJugador().estaDebilitado()) {
+                System.out.println("✅ Pokémon detectado como debilitado en avanzarMensaje()");
+            }
             if (combate.isCombateTerminado()) {
                 estadoActual = EstadoMenu.FIN_COMBATE;
             } else if (combate.getPokemonJugador().estaDebilitado()) {

@@ -14,10 +14,10 @@ public class Pokemon {
     // Datos individuales
     protected String apodo;
     protected int nivel;
-    protected int experiencia;
+    public int experiencia;
 
     // Stats actuales
-    protected int psActual;
+    public int psActual;
     protected int psMaximos;
     protected int ataque;
     protected int defensa;
@@ -27,7 +27,7 @@ public class Pokemon {
 
     // Sistema de combate
     protected List<Movimiento> movimientos;
-    protected boolean debilitado;
+    public boolean debilitado;
     protected Texture sprite;
 
     // Constructor principal
@@ -132,9 +132,7 @@ public class Pokemon {
     // Métodos de combate
     public void recibirDaño(int daño) {
         psActual = Math.max(0, psActual - daño);
-        if (psActual == 0) {
-            debilitado = true;
-        }
+        verificarEstadoDebilitado(); // Llamar al nuevo método
     }
 
     public void curar(int cantidad) {
@@ -143,7 +141,7 @@ public class Pokemon {
             this.psActual = this.psMaximos;
         }
         if (this.psActual > 0) {
-            this.debilitado = false;
+            this.debilitado = false; // Si se cura, ya no está debilitado
         }
     }
 
@@ -193,6 +191,15 @@ public class Pokemon {
     public Tipo getTipoSecundario() { return especie.getTipo2(); }
     public Texture getSprite() { return sprite; }
     public boolean estaDebilitado() { return debilitado; }
+    public void verificarEstadoDebilitado() {
+        // Si tiene 0 PS, debe estar debilitado
+        if (psActual <= 0) {
+            this.debilitado = true;
+            this.psActual = 0; // Asegurar que no sea negativo
+        } else {
+            this.debilitado = false;
+        }
+    }
 
     public void dispose() {
         if (sprite != null) sprite.dispose();
