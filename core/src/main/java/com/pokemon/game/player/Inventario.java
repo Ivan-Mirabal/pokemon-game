@@ -111,4 +111,9 @@ public class Inventario {
         int cantidad = getCantidadDeItem(nombreItem);
         return cantidad >= cantidadMinima;
     }
+
+    public void vaciarInventario() {
+        this.slots.clear();
+        this.cantidadTotal = 0;
+    }
 }

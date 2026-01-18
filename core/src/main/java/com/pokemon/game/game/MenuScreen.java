@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.pokemon.game.data.SaveData;
+import com.pokemon.game.data.SaveManager;
 
 public class MenuScreen implements Screen {
 
@@ -19,7 +21,7 @@ public class MenuScreen implements Screen {
     private BitmapFont font;
     private GlyphLayout glyphLayout;
 
-    private String[] menuItems = {"INICIAR JUEGO", "MULTIJUGADOR", "SALIR DEL JUEGO"};
+    private String[] menuItems = {"NUEVA PARTIDA", "CARGAR PARTIDA", "SALIR DEL JUEGO"};
     private int selectedItem = 0;
     private float blinkTimer = 0f;
     private boolean showText = true;
@@ -191,6 +193,8 @@ public class MenuScreen implements Screen {
     }
 
     private void handleInput() {
+        if (transitioning) return;
+
         // Navegación del menú
         if (Gdx.input.isKeyJustPressed(Keys.UP)) {
             selectedItem = (selectedItem - 1 + menuItems.length) % menuItems.length;
@@ -205,14 +209,13 @@ public class MenuScreen implements Screen {
             transitioning = true;
 
             switch(selectedItem) {
-                case 0: // INICIAR JUEGO
-                    System.out.println("Iniciando juego...");
+                case 0: // NUEVA PARTIDA
+                    System.out.println("Iniciando nueva partida...");
                     game.setScreen(new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16));
                     break;
 
-                case 1: // MULTIJUGADOR
-                    System.out.println("Modo multijugador - en desarrollo");
-                    game.setScreen(new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16));
+                case 1: // CARGAR PARTIDA
+                    cargarPartidaGuardada();
                     break;
 
                 case 2: // SALIR DEL JUEGO
@@ -220,6 +223,29 @@ public class MenuScreen implements Screen {
                     Gdx.app.exit();
                     break;
             }
+        }
+    }
+
+    private void cargarPartidaGuardada() {
+        try {
+            if (!SaveManager.getInstance().existePartida()) return;
+
+            SaveData datos = SaveManager.getInstance().cargarPartida();
+
+            if (datos != null) {
+                // 1. Creamos la pantalla
+                GameScreen gameScreen = new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16);
+
+                // 2. IMPORTANTE: Cambiamos la pantalla PRIMERO
+                game.setScreen(gameScreen);
+
+                // 3. Ahora que la pantalla está activa, inyectamos los datos
+                gameScreen.cargarDatosJugador(datos);
+
+                System.out.println("✅ Datos inyectados tras cambio de pantalla");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

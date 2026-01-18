@@ -3,6 +3,7 @@ package com.pokemon.game.game;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.pokemon.game.data.SaveManager;
 
 public class PokemonGame extends Game {
     public SpriteBatch batch; // Añade esto
@@ -12,6 +13,7 @@ public class PokemonGame extends Game {
     public void create() {
         batch = new SpriteBatch(); // Créalo una sola vez
         musics = new Musics();
+        SaveManager.getInstance();
         setScreen(new SplashScreen(this));
     }
 

@@ -1,0 +1,58 @@
+{
+"pokedex": {
+	"registros": {
+		"Zorua": {
+			"class": "com.pokemon.game.pokedex.PokedexEntry",
+			"especie": "Zorua",
+			"visto": true,
+			"vecesVisto": 1,
+			"primerAvistamientoUbicacion": "Mapa Centro",
+			"primerAvistamientoFecha": "17/01/2026 23:42"
+		}
+	}
+},
+"equipo": [
+	{
+		"especie": "Pikachu",
+		"apodo": "Pika",
+		"nivel": 5,
+		"psActual": 18,
+		"psMaximos": 18,
+		"experiencia": 0
+	},
+	{
+		"especie": "Charizard",
+		"apodo": "Jorge",
+		"nivel": 8,
+		"psActual": 30,
+		"psMaximos": 30,
+		"experiencia": 0
+	}
+],
+"inventario": [
+	{
+		"nombreItem": "Poké Ball",
+		"cantidad": 5
+	},
+	{
+		"nombreItem": "Poción",
+		"cantidad": 3
+	},
+	{
+		"nombreItem": "Planta",
+		"cantidad": 5
+	},
+	{
+		"nombreItem": "Guijarro",
+		"cantidad": 8
+	},
+	{
+		"nombreItem": "Baya",
+		"cantidad": 3
+	},
+	{
+		"nombreItem": "Metal",
+		"cantidad": 5
+	}
+]
+}

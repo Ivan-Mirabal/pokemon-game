@@ -107,38 +107,53 @@ public class Combate {
     }
 
     // Turno del rival (IA simple)
+    // Reemplaza el método ejecutarTurnoRival() con esta versión mejorada:
+
     public void ejecutarTurnoRival() {
         if (pokemonJugador.estaDebilitado() || pokemonRival.estaDebilitado()) {
             return;
         }
 
-        // IA simple: usa el primer movimiento disponible
+        // 1. Obtener todos los movimientos disponibles (con PP)
+        List<Movimiento> movimientosDisponibles = new ArrayList<>();
         for (Movimiento movimiento : pokemonRival.getMovimientos()) {
             if (movimiento.puedeUsar()) {
-                movimiento.usar();
-                int daño = movimiento.calcularDaño(pokemonRival, pokemonJugador);
-
-                if (daño == 0) {
-                    registrarEvento("¡El ataque de " + pokemonRival.getNombre() + " falló!");
-                } else {
-                    pokemonJugador.recibirDaño(daño);
-                    registrarEvento(pokemonRival.getNombre() + " usa " + movimiento.getNombre() +
-                        " y causa " + daño + " puntos de daño!");
-
-                    if (pokemonJugador.estaDebilitado()) {
-                        registrarEvento("¡" + pokemonJugador.getNombre() + " fue debilitado!");
-                        // No terminar el combate aquí - dejar que el jugador cambie
-                    }
-                }
-                break;
+                movimientosDisponibles.add(movimiento);
             }
         }
 
-        // Cambiar turno
+        // 2. Si no hay movimientos disponibles, no hace nada
+        if (movimientosDisponibles.isEmpty()) {
+            registrarEvento("¡" + pokemonRival.getNombre() + " no tiene movimientos disponibles!");
+            turnoJugador = true;
+            return;
+        }
+
+        // 3. Seleccionar un movimiento ALEATORIO
+        int indiceAleatorio = (int)(Math.random() * movimientosDisponibles.size());
+        Movimiento movimiento = movimientosDisponibles.get(indiceAleatorio);
+
+        // 4. Usar el movimiento
+        movimiento.usar();
+        int daño = movimiento.calcularDaño(pokemonRival, pokemonJugador);
+
+        // 5. Registrar resultado
+        if (daño == 0) {
+            registrarEvento("¡El ataque de " + pokemonRival.getNombre() + " falló!");
+        } else {
+            pokemonJugador.recibirDaño(daño);
+            registrarEvento(pokemonRival.getNombre() + " usa " + movimiento.getNombre() +
+                " y causa " + daño + " puntos de daño!");
+
+            if (pokemonJugador.estaDebilitado()) {
+                registrarEvento("¡" + pokemonJugador.getNombre() + " fue debilitado!");
+            }
+        }
+
+        // 6. Cambiar turno
         turnoJugador = true;
     }
 
-    // Método para intentar captura durante el combate
     // Método para intentar captura durante el combate
     public boolean intentarCaptura(Entrenador entrenador, Pokeball ball) {
         // 1. Intentar gastar el ítem

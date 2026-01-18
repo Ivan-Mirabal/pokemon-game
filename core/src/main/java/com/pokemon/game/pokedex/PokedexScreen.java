@@ -85,7 +85,7 @@ public class PokedexScreen {
     private void dibujarListaPokedex(SpriteBatch batch, int screenWidth, int screenHeight) {
         List<PokedexEntry> entradas = pokedex.getEntradasOrdenadas();
         int pagina = player.getPokedexPage();
-        int inicio = pagina * player.POKEDEX_ENTRIES_PER_PAGE;
+        int inicio = pagina * player.POKEDEX_ENTRIES_PER_PAGE; // Ahora será 6
         int fin = Math.min(inicio + player.POKEDEX_ENTRIES_PER_PAGE, entradas.size());
 
         // Fondo
@@ -119,7 +119,7 @@ public class PokedexScreen {
         float panelX = 50;
         float panelY = screenHeight - 200;
         float panelAncho = screenWidth - 100;
-        float panelAlto = screenHeight - 300;
+        float panelAlto = screenHeight - 250; // Este alto debe calcularse para 6 entradas
 
         // Fondo del panel
         batch.setColor(new Color(0.15f, 0.15f, 0.2f, 0.9f));
@@ -135,75 +135,90 @@ public class PokedexScreen {
 
         // Lista de Pokémon dentro del recuadro
         float startX = panelX + 20;
-        float startY = panelY;
-        float espacio = 45; // Más espacio para incluir barra
+        float startY = panelY + 20;
+        float espacio = (panelAlto - 15) / 6; // Dividir el espacio disponible entre 6 slots
 
-        for (int i = inicio; i < fin; i++) {
-            PokedexEntry entrada = entradas.get(i);
-            float y = startY - ((i - inicio) * espacio);
-            boolean seleccionado = (i == inicio + player.getPokedexSelection());
+        for (int i = 0; i < player.POKEDEX_ENTRIES_PER_PAGE; i++) { // Siempre 6 iteraciones
+            float y = startY - (i * espacio);
+            int indiceReal = inicio + i;
+            boolean tienePokemon = indiceReal < fin;
+            boolean seleccionado = (i == player.getPokedexSelection() && tienePokemon);
 
-            // Resaltar seleccionado
+            // Fondo del slot (siempre dibujar, aunque esté vacío)
+            batch.setColor(new Color(0.18f, 0.18f, 0.24f, 0.7f));
+            batch.draw(whitePixel, startX - 10, y - 30, panelAncho - 20, espacio - 10);
+            batch.setColor(Color.WHITE);
+
+            // Resaltar slot seleccionado (solo si tiene Pokémon)
             if (seleccionado) {
-                batch.setColor(new Color(0.3f, 0.3f, 0.5f, 0.8f));
-                batch.draw(whitePixel, startX - 10, y - 25, panelAncho - 20, 40);
+                batch.setColor(new Color(0.3f, 0.4f, 0.8f, 0.5f));
+                batch.draw(whitePixel, startX - 10, y - 30, panelAncho - 20, espacio - 10);
                 batch.setColor(Color.WHITE);
             }
 
-            // 1. SPRITE POKÉDEX (40x40) - A LA IZQUIERDA
-            float spriteX = startX;
-            float spriteY = y - 25; // Centrado verticalmente
+            // Si hay Pokémon en este slot
+            if (tienePokemon) {
+                PokedexEntry entrada = entradas.get(indiceReal);
 
-            Texture spritePokedex = cargarSpritePokedex(entrada.getEspecie());
-            if (spritePokedex != null) {
-                batch.draw(spritePokedex, spriteX, spriteY,
-                    POKEDEX_SPRITE_SIZE, POKEDEX_SPRITE_SIZE);
-            } else {
-                // Placeholder cuadrado
-                batch.setColor(new Color(0.3f, 0.3f, 0.4f, 1));
-                batch.draw(whitePixel, spriteX, spriteY,
-                    POKEDEX_SPRITE_SIZE, POKEDEX_SPRITE_SIZE);
-                batch.setColor(Color.WHITE);
+                // 1. SPRITE POKÉDEX
+                float spriteX = startX;
+                float spriteY = y - 25;
 
-                // Inicial del nombre como fallback
-                font.setColor(new Color(0.6f, 0.6f, 0.8f, 1));
-                if (!entrada.getEspecie().isEmpty()) {
-                    String inicial = entrada.getEspecie().substring(0, 1);
-                    font.draw(batch, inicial, spriteX + 15, spriteY + 25);
-                }
-                font.setColor(Color.WHITE);
-            }
-
-            // 2. NOMBRE DEL POKÉMON (al lado del sprite)
-            float nombreX = spriteX + POKEDEX_SPRITE_SIZE + 15;
-            float nombreY = y;
-
-            if (seleccionado) {
-                font.setColor(Color.YELLOW);
-                font.draw(batch, "▶ " + entrada.getEspecie(), nombreX, nombreY);
-            } else {
-                // Color según estado
-                if (entrada.isCapturado()) {
-                    font.setColor(Color.GREEN);
-                } else if (entrada.isVisto()) {
-                    font.setColor(Color.YELLOW);
+                Texture spritePokedex = cargarSpritePokedex(entrada.getEspecie());
+                if (spritePokedex != null) {
+                    batch.draw(spritePokedex, spriteX, spriteY,
+                        POKEDEX_SPRITE_SIZE, POKEDEX_SPRITE_SIZE);
                 } else {
-                    font.setColor(Color.GRAY);
+                    // Placeholder
+                    batch.setColor(new Color(0.3f, 0.3f, 0.4f, 1));
+                    batch.draw(whitePixel, spriteX, spriteY,
+                        POKEDEX_SPRITE_SIZE, POKEDEX_SPRITE_SIZE);
+                    batch.setColor(Color.WHITE);
+
+                    if (!entrada.getEspecie().isEmpty()) {
+                        String inicial = entrada.getEspecie().substring(0, 1);
+                        font.draw(batch, inicial, spriteX + 15, spriteY + 25);
+                    }
                 }
-                font.draw(batch, entrada.getEspecie(), nombreX, nombreY);
-            }
 
-            // 3. BARRA DE PROGRESO DE INVESTIGACIÓN (a la derecha del nombre)
-            float barraX = nombreX + 180; // Espacio después del nombre más largo
-            float barraY = y - 10;
+                // 2. NOMBRE
+                float nombreX = spriteX + POKEDEX_SPRITE_SIZE + 15;
+                float nombreY = y;
 
-            if (entrada.isVisto()) {
-                // Solo mostrar barra si se ha visto al menos una vez
-                dibujarBarraProgreso(batch, entrada, barraX, barraY);
+                if (seleccionado) {
+                    font.setColor(Color.YELLOW);
+                    font.draw(batch, "▶ " + entrada.getEspecie(), nombreX, nombreY);
+                } else {
+                    // Color según estado
+                    if (entrada.isCapturado()) {
+                        font.setColor(Color.GREEN);
+                    } else if (entrada.isVisto()) {
+                        font.setColor(Color.YELLOW);
+                    } else {
+                        font.setColor(Color.GRAY);
+                    }
+                    font.draw(batch, entrada.getEspecie(), nombreX, nombreY);
+                }
+
+                // 3. BARRA DE PROGRESO
+                float barraX = nombreX + 180;
+                float barraY = y - 10;
+
+                if (entrada.isVisto()) {
+                    dibujarBarraProgreso(batch, entrada, barraX, barraY);
+                } else {
+                    font.setColor(new Color(0.5f, 0.5f, 0.7f, 1));
+                    font.draw(batch, "???", barraX, nombreY);
+                }
             } else {
-                // Mostrar "???" si no se ha visto
-                font.setColor(new Color(0.5f, 0.5f, 0.7f, 1));
-                font.draw(batch, "???", barraX, nombreY);
+                // Slot vacío - dibujar "---"
+                font.setColor(new Color(0.3f, 0.3f, 0.5f, 0.5f));
+                font.draw(batch, "---", startX + 20, y);
+
+                // Dibujar sprite placeholder vacío
+                batch.setColor(new Color(0.25f, 0.25f, 0.35f, 0.5f));
+                batch.draw(whitePixel, startX, y - 25,
+                    POKEDEX_SPRITE_SIZE, POKEDEX_SPRITE_SIZE);
             }
 
             font.setColor(Color.WHITE);

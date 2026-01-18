@@ -15,6 +15,9 @@ public class PokedexEntry {
     private String primeraCapturaUbicacion;
     private String primeraCapturaFecha;
 
+    public PokedexEntry() {
+    }
+
     public PokedexEntry(String especie) {
         this.especie = especie;
         this.visto = false;

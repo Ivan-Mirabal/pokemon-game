@@ -174,6 +174,11 @@ public class Entrenador {
     public void incrementarVictorias() { victorias++; }
     public void incrementarDerrotas() { derrotas++; }
 
+    public void vaciarEquipo() {
+        this.equipo.clear();
+        this.pokemonActual = null;
+    }
+
     @Override
     public String toString() {
         return nombre + " - Pokémon: " + equipo.size() + "/6 - Dinero: $" + dinero;

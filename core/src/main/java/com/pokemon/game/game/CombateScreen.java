@@ -152,7 +152,7 @@ public class CombateScreen implements Screen {
 
         // Intentar cargar fondo
         try {
-            fondoCombate = new Texture(Gdx.files.internal("sprites/combate/fondo.png"));
+            fondoCombate = new Texture(Gdx.files.internal("sprites/combate/fondo1.png"));
         } catch (Exception e) {
             fondoCombate = null;
         }
@@ -425,22 +425,92 @@ public class CombateScreen implements Screen {
     }
 
     private boolean manejarMenuObjetos(int keycode) {
+        // Obtener lista de objetos de combate
+        List<Ranura> objetosCombate = new ArrayList<>();
+        for (Ranura ranura : player.getInventario().getRanuras()) {
+            Item item = ranura.getItem();
+            if (item instanceof Pokeball || item instanceof Curacion) {
+                objetosCombate.add(ranura);
+            }
+        }
+
+        int totalObjetos = Math.min(objetosCombate.size(), 6); // Máximo 6 slots visibles
+
         switch (keycode) {
             case Keys.UP:
-                if (seleccionObjeto >= 2) seleccionObjeto -= 2;
+                // Mover hacia arriba en la cuadrícula 2x3
+                if (seleccionObjeto >= 2) {
+                    int nuevaSeleccion = seleccionObjeto - 2;
+                    if (nuevaSeleccion < totalObjetos) {
+                        seleccionObjeto = nuevaSeleccion;
+                    }
+                }
                 return true;
             case Keys.DOWN:
-                seleccionObjeto = Math.min(seleccionObjeto + 2, 7);
+                // Mover hacia abajo en la cuadrícula 2x3
+                if (seleccionObjeto < 4 && seleccionObjeto + 2 < totalObjetos) {
+                    seleccionObjeto += 2;
+                }
                 return true;
             case Keys.LEFT:
-                if (seleccionObjeto % 2 == 1) seleccionObjeto--;
+                // Mover hacia izquierda
+                if (seleccionObjeto % 2 == 1 && seleccionObjeto - 1 < totalObjetos) {
+                    seleccionObjeto--;
+                }
                 return true;
             case Keys.RIGHT:
-                if (seleccionObjeto % 2 == 0) seleccionObjeto++;
+                // Mover hacia derecha
+                if (seleccionObjeto % 2 == 0 && seleccionObjeto + 1 < totalObjetos) {
+                    seleccionObjeto++;
+                }
+                return true;
+            case Keys.NUM_1:
+            case Keys.NUMPAD_1:
+                if (0 < totalObjetos) {
+                    seleccionObjeto = 0;
+                    usarObjeto();
+                }
+                return true;
+            case Keys.NUM_2:
+            case Keys.NUMPAD_2:
+                if (1 < totalObjetos) {
+                    seleccionObjeto = 1;
+                    usarObjeto();
+                }
+                return true;
+            case Keys.NUM_3:
+            case Keys.NUMPAD_3:
+                if (2 < totalObjetos) {
+                    seleccionObjeto = 2;
+                    usarObjeto();
+                }
+                return true;
+            case Keys.NUM_4:
+            case Keys.NUMPAD_4:
+                if (3 < totalObjetos) {
+                    seleccionObjeto = 3;
+                    usarObjeto();
+                }
+                return true;
+            case Keys.NUM_5:
+            case Keys.NUMPAD_5:
+                if (4 < totalObjetos) {
+                    seleccionObjeto = 4;
+                    usarObjeto();
+                }
+                return true;
+            case Keys.NUM_6:
+            case Keys.NUMPAD_6:
+                if (5 < totalObjetos) {
+                    seleccionObjeto = 5;
+                    usarObjeto();
+                }
                 return true;
             case Keys.ENTER:
             case Keys.SPACE:
-                usarObjeto();
+                if (seleccionObjeto < totalObjetos) {
+                    usarObjeto();
+                }
                 return true;
             case Keys.B:
             case Keys.ESCAPE:
@@ -1127,57 +1197,221 @@ public class CombateScreen implements Screen {
     }
 
     private void dibujarMenuObjetos() {
-        // Panel para objetos
-        batch.setColor(COLOR_MENU);
-        batch.draw(whitePixel, 0, 50, Gdx.graphics.getWidth(), 250);
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+
+        // 1. FONDO SEMI-TRANSPARENTE OSCURO
+        batch.setColor(new Color(0f, 0f, 0f, 0.85f));
+        batch.draw(whitePixel, 0, 0, screenWidth, screenHeight);
+        batch.setColor(Color.WHITE);
+
+        // 2. CABECERA CON TÍTULO
+        float headerY = screenHeight - 60;
+
+        // Fondo de cabecera
+        batch.setColor(new Color(0.1f, 0.1f, 0.2f, 0.9f));
+        batch.draw(whitePixel, 0, headerY - 40, screenWidth, 70);
+        batch.setColor(Color.WHITE);
 
         // Título
-        font.setColor(Color.CYAN);
-        font.draw(batch, "SELECCIONA UN OBJETO", 50, 280);
+        font.getData().setScale(2.0f);
+        font.setColor(new Color(0.4f, 0.8f, 1.0f, 1));
 
-        // Filtrar objetos de combate
-        List<Ranura> itemsCombate = new ArrayList<>();
-        for (Ranura ranura : player.getInventario().getRanuras()) {
+        String titulo = "MOCHILA DE COMBATE";
+        GlyphLayout tituloLayout = new GlyphLayout(font, titulo);
+        float tituloX = (screenWidth - tituloLayout.width) / 2;
+        float tituloY = headerY;
+        font.draw(batch, titulo, tituloX, tituloY);
+        font.getData().setScale(1.0f);
+
+        // Subtítulo
+        font.setColor(new Color(0.8f, 0.8f, 1.0f, 1));
+        String subtitulo = "SELECCIONA UN OBJETO PARA USAR";
+        GlyphLayout subtituloLayout = new GlyphLayout(font, subtitulo);
+        float subtituloX = (screenWidth - subtituloLayout.width) / 2;
+        float subtituloY = headerY - 25;
+        font.draw(batch, subtitulo, subtituloX, subtituloY);
+
+        // 3. INFORMACIÓN DEL POKÉMON ACTUAL
+        Pokemon actual = combate.getPokemonJugador();
+        font.setColor(new Color(0.9f, 0.9f, 0.5f, 1));
+        String actualTexto = "Actual: " + actual.getApodo() + " (Nv. " + actual.getNivel() + ")";
+        GlyphLayout actualLayout = new GlyphLayout(font, actualTexto);
+        float actualX = (screenWidth - actualLayout.width) / 2;
+        float actualY = headerY - 45;
+        font.draw(batch, actualTexto, actualX, actualY);
+
+        // 4. DISEÑO DE CUADRÍCULA 2x3 - MISMAS MEDIDAS QUE MENÚ POKÉMON
+        float startY = headerY - 175;
+
+        // MISMAS DIMENSIONES que menú Pokémon
+        float boxWidth = 320;
+        float boxHeight = 100;
+        float horizontalSpacing = 40;
+        float verticalSpacing = 25;
+
+        // Centrar horizontalmente toda la cuadrícula
+        float totalWidth = (2 * boxWidth) + horizontalSpacing;
+        float gridStartX = (screenWidth - totalWidth) / 2;
+
+        // 5. POSICIONES PARA 2 COLUMNAS, 3 FILAS - MISMA DISPOSICIÓN
+        float[][] positions = {
+            {gridStartX, startY},                              // Columna 0, Fila 0
+            {gridStartX + boxWidth + horizontalSpacing, startY}, // Columna 1, Fila 0
+            {gridStartX, startY - boxHeight - verticalSpacing},   // Columna 0, Fila 1
+            {gridStartX + boxWidth + horizontalSpacing, startY - boxHeight - verticalSpacing}, // Columna 1, Fila 1
+            {gridStartX, startY - 2 * (boxHeight + verticalSpacing)}, // Columna 0, Fila 2
+            {gridStartX + boxWidth + horizontalSpacing, startY - 2 * (boxHeight + verticalSpacing)} // Columna 1, Fila 2
+        };
+
+        // 6. OBTENER OBJETOS DE COMBATE DEL INVENTARIO
+        Inventario inventario = player.getInventario();
+        List<Ranura> todasLasRanuras = inventario.getRanuras();
+        List<Ranura> objetosCombate = new ArrayList<>();
+
+        for (Ranura ranura : todasLasRanuras) {
             Item item = ranura.getItem();
             if (item instanceof Pokeball || item instanceof Curacion) {
-                itemsCombate.add(ranura);
+                objetosCombate.add(ranura);
             }
         }
 
-        // Mostrar items
-        for (int i = 0; i < itemsCombate.size(); i++) {
-            if (i >= 8) break;
+        // 7. DIBUJAR LOS 6 SLOTS
+        for (int slotIndex = 0; slotIndex < 6; slotIndex++) {
+            float x = positions[slotIndex][0];
+            float y = positions[slotIndex][1];
 
-            Ranura ranura = itemsCombate.get(i);
-            float x = 100 + ((i % 2) * 300);
-            float y = 250 - ((i / 2) * 50);
+            boolean tieneObjeto = slotIndex < objetosCombate.size();
+            boolean esSeleccionado = (slotIndex == seleccionObjeto);
 
-            if (i == seleccionObjeto) {
-                batch.setColor(COLOR_SELECCION);
-                batch.draw(whitePixel, x - 10, y - 20, 250, 40);
+            // 8. DIBUJAR CUADRO DEL SLOT
+            Color colorFondo;
+            Color colorBorde;
+
+            if (esSeleccionado && tieneObjeto) {
+                colorFondo = new Color(0.2f, 0.4f, 0.8f, 0.8f);
+                colorBorde = new Color(0.4f, 0.6f, 1.0f, 1);
+            } else {
+                colorFondo = new Color(0.15f, 0.15f, 0.2f, 0.8f);
+                colorBorde = new Color(0.4f, 0.4f, 0.5f, 1);
+            }
+
+            // Fondo del cuadro
+            batch.setColor(colorFondo);
+            batch.draw(whitePixel, x, y, boxWidth, boxHeight);
+
+            // Borde del cuadro
+            batch.setColor(colorBorde);
+            batch.draw(whitePixel, x, y, boxWidth, 3);
+            batch.draw(whitePixel, x, y + boxHeight, boxWidth, 3);
+            batch.draw(whitePixel, x, y, 3, boxHeight);
+            batch.draw(whitePixel, x + boxWidth, y, 3, boxHeight);
+            batch.setColor(Color.WHITE);
+
+            // 9. DIBUJAR OBJETO SI EXISTE
+            if (tieneObjeto) {
+                Ranura ranura = objetosCombate.get(slotIndex);
+                Item item = ranura.getItem();
+
+                // ICONO SEGÚN TIPO DE OBJETO (56x56)
+                float iconoX = x + 10;
+                float iconoY = y + (boxHeight - 56) / 2;
+                float iconoSize = 56;
+
+                // Color del icono según tipo
+                Color colorIcono;
+                String textoIcono = "";
+
+                if (item instanceof Pokeball) {
+                    colorIcono = new Color(1f, 0.3f, 0.3f, 1);
+                    textoIcono = "POKÉ";
+                } else if (item instanceof Curacion) {
+                    colorIcono = new Color(0.3f, 1f, 0.3f, 1);
+                    textoIcono = "CURAR";
+                } else {
+                    colorIcono = new Color(0.8f, 0.8f, 0.3f, 1);
+                    textoIcono = "ITEM";
+                }
+
+                // Dibujar icono circular
+                batch.setColor(colorIcono);
+                batch.draw(whitePixel, iconoX, iconoY, iconoSize, iconoSize);
+
+                // Borde del icono
+                batch.setColor(new Color(1f, 1f, 1f, 0.3f));
+                batch.draw(whitePixel, iconoX, iconoY, iconoSize, 1);
+                batch.draw(whitePixel, iconoX, iconoY + iconoSize, iconoSize, 1);
+                batch.draw(whitePixel, iconoX, iconoY, 1, iconoSize);
+                batch.draw(whitePixel, iconoX + iconoSize, iconoY, 1, iconoSize);
+
+                // Texto del icono
+                font.getData().setScale(0.8f);
+                font.setColor(Color.WHITE);
+                GlyphLayout iconoLayout = new GlyphLayout(font, textoIcono);
+                float iconoTextoX = iconoX + (iconoSize - iconoLayout.width) / 2;
+                float iconoTextoY = iconoY + (iconoSize + iconoLayout.height) / 2;
+                font.draw(batch, textoIcono, iconoTextoX, iconoTextoY);
+                font.getData().setScale(1.0f);
                 batch.setColor(Color.WHITE);
 
-                font.setColor(Color.YELLOW);
-                font.draw(batch, "▶ " + ranura.getItem().getNombre(), x, y);
+                // 10. INFORMACIÓN A LA DERECHA DEL ICONO
+                float infoX = x + 80;
+                float infoTopY = y + boxHeight - 15;
+
+                // NOMBRE DEL OBJETO
+                font.setColor(esSeleccionado ? new Color(1f, 1f, 0.5f, 1) : new Color(0.9f, 0.9f, 1f, 1));
+                String nombreItem = item.getNombre();
+                if (nombreItem.length() > 15) {
+                    nombreItem = nombreItem.substring(0, 13) + "...";
+                }
+                font.draw(batch, nombreItem, infoX, infoTopY);
+
+                // CANTIDAD
+                font.setColor(new Color(0.8f, 0.8f, 0.9f, 1));
+                String cantidadTexto = "x" + ranura.getCantidad();
+                font.draw(batch, cantidadTexto, x + boxWidth - 60, infoTopY);
+
+                // EFECTO - línea media
+                float efectoY = y + boxHeight - 40;
+                font.setColor(colorIcono);
+
+                String efectoTexto = "";
+                if (item instanceof Pokeball) {
+                    Pokeball pokeball = (Pokeball) item;
+                    efectoTexto = "CAPTURA: " + pokeball.getTasaCaptura();
+                } else if (item instanceof Curacion) {
+                    Curacion curacion = (Curacion) item;
+                    efectoTexto = "CURA: " + curacion.getHpRestaurado() + " PS";
+                }
+
+                font.draw(batch, efectoTexto, infoX, efectoY);
+
             } else {
-                font.setColor(COLOR_TEXTO);
-                font.draw(batch, ranura.getItem().getNombre(), x, y);
+                // SLOT VACÍO
+                font.setColor(new Color(0.5f, 0.5f, 0.7f, 1));
+                String textoVacio = "--- VACÍO ---";
+                float textoWidth = textoVacio.length() * 10;
+                float textoX = x + (boxWidth - textoWidth) / 2;
+                float textoY = y + boxHeight / 2;
+                font.draw(batch, textoVacio, textoX, textoY);
             }
-
-            // Cantidad
-            font.setColor(new Color(0.8f, 0.8f, 0.9f, 1));
-            font.draw(batch, "x" + ranura.getCantidad(), x + 200, y);
         }
 
-        // Si no hay items
-        if (itemsCombate.isEmpty()) {
-            font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
-            font.draw(batch, "No tienes objetos para usar en combate", 150, 150);
-        }
+        // 11. INSTRUCCIONES
+        float instruccionesY = 30;
 
-        // Instrucciones
-        font.setColor(new Color(0.6f, 0.6f, 0.8f, 1));
-        font.draw(batch, "Flechas: Navegar  Enter: Usar  B: Volver", 100, 70);
+        // Fondo para instrucciones
+        batch.setColor(new Color(0f, 0f, 0f, 0.7f));
+        batch.draw(whitePixel, 0, instruccionesY - 15, screenWidth, 40);
+        batch.setColor(Color.WHITE);
+
+        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
+        String instrucciones = "FLECHAS: Navegar  1-6: Selección rápida  ENTER: Usar  B/ESC: Volver";
+
+        // Centrar instrucciones
+        GlyphLayout instruccionesLayout = new GlyphLayout(font, instrucciones);
+        float instruccionesX = (screenWidth - instruccionesLayout.width) / 2;
+        font.draw(batch, instrucciones, instruccionesX, instruccionesY + 10);
     }
 
     private void dibujarMensaje() {

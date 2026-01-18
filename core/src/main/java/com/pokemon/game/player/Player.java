@@ -7,14 +7,17 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.pokemon.game.*;
+import com.pokemon.game.data.SaveData;
 import com.pokemon.game.game.GameScreen;
 import com.pokemon.game.item.*;
 import com.pokemon.game.pokedex.PokedexEntry;
+import com.pokemon.game.pokedex.PokedexManager;
 import com.pokemon.game.pokemon.Entrenador;
 import com.pokemon.game.pokemon.FabricaPokemon;
 import com.pokemon.game.pokemon.PokemonJugador;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class Player {
@@ -80,9 +83,7 @@ public class Player {
     private int pokedexSelection = 0;           // Índice seleccionado en lista
     private String pokedexSelectedSpecies = null; // Especie seleccionada
     private int pokedexPage = 0;                // Paginación
-    public final int POKEDEX_ENTRIES_PER_PAGE = 10; // 10 por página
-
-
+    public final int POKEDEX_ENTRIES_PER_PAGE = 6; // 10 por página
 
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
         this.x = startX;
@@ -861,4 +862,221 @@ public class Player {
     public int getInventoryColumna() { return inventarioColumna; }
     public int getInventoryIndice() { return inventarioIndice; }
     public void setInventoryIndice(int indice) { this.inventarioIndice = indice; }
+
+    // AÑADIR AL FINAL DE Player.java (antes del cierre de clase):
+
+// ============ MÉTODOS PARA SISTEMA DE GUARDADO ============
+
+    /**
+     * Extrae los datos actuales del jugador para guardar
+     */
+    public SaveData extraerDatosParaGuardar() {
+        SaveData datos = new SaveData();
+
+        // 1. Extraer Pokédex COMPLETA
+        if (this.getEntrenador() != null && this.getEntrenador().getPokedex() != null) {
+            // Clonar la Pokédex para no modificar la original
+            datos.setPokedex(clonarPokedex(this.getEntrenador().getPokedex()));
+        }
+
+        // 2. Extraer equipo Pokémon (simplificado)
+        List<SaveData.PokemonSimple> equipoSimple = new ArrayList<>();
+        if (this.getEntrenador() != null) {
+            for (PokemonJugador pokemon : this.getEntrenador().getEquipo()) {
+                SaveData.PokemonSimple simple = convertirPokemonASimple(pokemon);
+                equipoSimple.add(simple);
+            }
+        }
+        datos.setEquipo(equipoSimple);
+
+        // 3. Extraer inventario
+        List<SaveData.ItemSlot> inventarioSimple = new ArrayList<>();
+        if (this.getInventario() != null) {
+            for (Ranura ranura : this.getInventario().getRanuras()) {
+                SaveData.ItemSlot slot = new SaveData.ItemSlot(
+                    ranura.getItem().getNombre(),
+                    ranura.getCantidad()
+                );
+                inventarioSimple.add(slot);
+            }
+        }
+        datos.setInventario(inventarioSimple);
+
+        return datos;
+    }
+
+    /**
+     * Carga datos guardados en el jugador actual
+     */
+    public void cargarDatosGuardados(SaveData datos) {
+        if (datos == null) {
+            System.out.println("⚠️ No hay datos para cargar");
+            return;
+        }
+
+        System.out.println("🔄 Cargando datos guardados...");
+
+        // Player.java -> cargarDatosGuardados
+        if (this.getEntrenador() != null) {
+            this.getEntrenador().vaciarEquipo(); // Usa el nuevo método
+            System.out.println("🧹 Equipo inicial limpiado.");
+        }
+
+        //Cargar pokedex
+        if (datos.getPokedex() != null && this.getEntrenador() != null) {
+            // Obtenemos los registros directamente del manager guardado
+            java.util.Map<String, PokedexEntry> registrosGuardados = datos.getPokedex().getRegistros();
+
+            if (registrosGuardados != null) {
+                this.getEntrenador().getPokedex().setRegistros(registrosGuardados);
+                System.out.println("✅ Pokédex cargada: " +
+                    this.getEntrenador().getPokedex().getTotalEspeciesVistas() + " especies.");
+            }
+        }
+
+        // 2. Cargar equipo Pokémon
+        if (datos.getEquipo() != null && this.getEntrenador() != null) {
+            // Limpiar equipo actual
+            this.getEntrenador().getEquipo().clear();
+
+            // Cargar cada Pokémon guardado
+            int contador = 0;
+            for (SaveData.PokemonSimple simple : datos.getEquipo()) {
+                PokemonJugador pokemon = recrearPokemonDesdeSimple(simple);
+                if (pokemon != null) {
+                    this.getEntrenador().agregarPokemon(pokemon);
+                    contador++;
+                }
+            }
+            System.out.println("✅ Equipo cargado: " + contador + " Pokémon");
+        }
+
+        // 3. Cargar inventario
+        if (datos.getInventario() != null && this.getInventario() != null) {
+            // Crear nuevo inventario vacío
+            this.getInventario().vaciarInventario();
+
+            // Cargar cada ítem
+            int totalItems = 0;
+            for (SaveData.ItemSlot slot : datos.getInventario()) {
+                Item item = crearItemPorNombre(slot.getNombreItem());
+                if (item != null) {
+                    this.getInventario().agregarItem(item, slot.getCantidad());
+                    totalItems += slot.getCantidad();
+                }
+            }
+            System.out.println("✅ Inventario cargado: " + totalItems + " ítems");
+        }
+
+        System.out.println("🎮 ¡Datos cargados exitosamente!");
+    }
+
+// ============ MÉTODOS PRIVADOS AUXILIARES ============
+
+    /**
+     * Convierte un PokemonJugador a su versión simple para guardar
+     */
+    private SaveData.PokemonSimple convertirPokemonASimple(PokemonJugador pokemon) {
+        return new SaveData.PokemonSimple(
+            pokemon.getEspecie().getNombre(),
+            pokemon.getApodo(),
+            pokemon.getNivel(),
+            pokemon.getPsActual(),
+            pokemon.getPsMaximos(),
+            pokemon.getExperiencia()
+        );
+    }
+
+    /**
+     * Recrea un PokemonJugador desde datos simples
+     */
+    private PokemonJugador recrearPokemonDesdeSimple(SaveData.PokemonSimple simple) {
+        try {
+            // Usar la fábrica existente para crear el Pokémon
+            PokemonJugador pokemon = FabricaPokemon.crearPokemonJugador(
+                simple.getEspecie(),
+                simple.getNivel(),
+                simple.getApodo()
+            );
+
+            if (pokemon != null) {
+                // Ajustar PS actuales (la fábrica los pone al máximo)
+                int diferenciaPS = simple.getPsActual() - pokemon.getPsActual();
+                if (diferenciaPS != 0) {
+                    pokemon.curar(diferenciaPS);
+                }
+
+                // Ajustar experiencia (aproximado)
+                // Nota: Esto es simplificado, en un sistema real necesitarías
+                // calcular la experiencia basada en el nivel y experiencia guardada
+            }
+
+            return pokemon;
+        } catch (Exception e) {
+            System.err.println("❌ Error recreando Pokémon: " + simple.getEspecie());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Crea un ítem por su nombre
+     */
+    private Item crearItemPorNombre(String nombreItem) {
+        if (nombreItem == null || nombreItem.isEmpty()) {
+            return null;
+        }
+
+        String nombreLower = nombreItem.toLowerCase();
+
+        // Sistema de ítems básicos
+        switch (nombreLower) {
+            case "pokeball":
+            case "poké ball":
+                return new Pokeball();
+
+            case "poción":
+                return new Curacion("Poción", 20);
+
+            case "superpoción":
+            case "super poción":
+                return new Curacion("Superpoción", 50);
+
+            case "metal":
+                return new Recurso("Metal", "Material de crafteo");
+
+            case "planta":
+                return new Recurso("Planta", "Material de crafteo");
+
+            case "guijarro":
+                return new Recurso("Guijarro", "Material de crafteo");
+
+            case "baya":
+                return new Recurso("Baya", "Fruta curativa");
+
+            default:
+                System.out.println("⚠️ Item no reconocido: " + nombreItem);
+                // Crear recurso genérico como fallback
+                return new Recurso(nombreItem, "Ítem guardado");
+        }
+    }
+
+    /**
+     * Clona la Pokédex para evitar modificar la original
+     */
+    private PokedexManager clonarPokedex(PokedexManager original) {
+        // Crear nueva instancia
+        PokedexManager clon = new PokedexManager();
+
+        // Copiar registros (asumiendo que PokedexEntry es serializable)
+        // Nota: Esto es simplificado, necesitarías métodos de copia en PokedexManager
+        try {
+            // Por ahora, simplemente devolvemos la original
+            // En una implementación real, necesitarías clonar profundamente
+            return original;
+        } catch (Exception e) {
+            System.err.println("❌ Error clonando Pokédex");
+            return new PokedexManager();
+        }
+    }
 }

@@ -57,6 +57,7 @@ public class DataLoader {
             }
 
             System.out.println("Especies: " + contador + " cargadas");
+            System.out.println("Todas las especies cargadas");
 
         } catch (Exception e) {
             System.err.println("Error cargando species.json: " + e.getMessage());

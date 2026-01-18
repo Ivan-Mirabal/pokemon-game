@@ -17,6 +17,8 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pokemon.game.*;
 import com.pokemon.game.data.DataLoader;
+import com.pokemon.game.data.SaveData;
+import com.pokemon.game.data.SaveManager;
 import com.pokemon.game.item.Crafteo;
 import com.pokemon.game.item.Curacion;
 import com.pokemon.game.item.Item;
@@ -80,6 +82,9 @@ public class GameScreen implements Screen {
     private PokedexScreen pokedexScreen;
 
     private EncountersManager encountersManager;
+
+    private int selectedSaveOption = 0; // Para navegar en menú SAVE
+
 
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY) {
         this.game = game;
@@ -424,6 +429,7 @@ public class GameScreen implements Screen {
                         int inicio = player.getPokedexPage() * player.POKEDEX_ENTRIES_PER_PAGE;
                         int indice = inicio + player.getPokedexSelection();
 
+                        // VERIFICAR que el índice sea válido
                         if (indice < entradas.size()) {
                             player.setPokedexSelectedSpecies(entradas.get(indice).getEspecie());
                         }
@@ -502,6 +508,42 @@ public class GameScreen implements Screen {
                 }
             }
 
+            if (player.getMenuState() == MenuState.SAVE){
+                if (Gdx.input.isKeyJustPressed(Keys.UP)) {
+                    selectedSaveOption = (selectedSaveOption - 1 + 3) % 3;
+                }
+                if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
+                    selectedSaveOption = (selectedSaveOption + 1) % 3;
+                }
+
+                // Selección
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                    switch(selectedSaveOption) {
+                        case 0: // Guardar partida
+                            guardarPartidaActual();
+                            player.setMenuState(MenuState.MAIN);
+                            break;
+
+                        case 1: // Guardar y salir
+                            guardarPartidaActual();
+                            // Cambiar a MenuScreen
+                            game.musics.stopopenworldmusic();
+                            game.musics.startmenumusic();
+                            game.setScreen(new MenuScreen(game));
+                            break;
+
+                        case 2: // Cancelar
+                            player.setMenuState(MenuState.MAIN);
+                            break;
+                    }
+                }
+
+                // ESC para cancelar
+                if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+                    player.setMenuState(MenuState.MAIN);
+                }
+            }
+
             // SEGUNDO: Manejo para otros menús (excepto POKEDEX)
             else if (player.getMenuState() != MenuState.POKEDEX) {
                 // Flechas para navegar
@@ -554,6 +596,41 @@ public class GameScreen implements Screen {
                     player.setMenuState(MenuState.INVENTORY);
                 }
             }
+        }
+    }
+
+    private void guardarPartidaActual() {
+        try {
+            // Extraer datos del jugador
+            SaveData datos = player.extraerDatosParaGuardar();
+
+            // Guardar usando SaveManager
+            boolean exito = SaveManager.getInstance().guardarPartida(datos);
+
+            if (exito) {
+                System.out.println("✅ ¡Partida guardada exitosamente!");
+                // Podrías añadir un mensaje visual aquí
+            } else {
+                System.out.println("❌ Error al guardar la partida");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error en guardarPartidaActual: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void cargarDatosJugador(SaveData datos) {
+        // Si player es nulo, intentamos esperar un momento o forzar su creación
+        if (this.player == null) {
+            System.out.println("Wait... player era nulo, intentando inicializar...");
+            // Aquí deberías llamar al método que instancia a tu jugador si no se ha hecho
+        }
+
+        if (this.player != null && datos != null) {
+            this.player.cargarDatosGuardados(datos);
+            System.out.println("✅ ¡Datos transferidos al jugador con éxito!");
+        } else {
+            System.out.println("❌ ERROR CRÍTICO: El objeto player sigue siendo nulo en GameScreen");
         }
     }
 
@@ -1735,12 +1812,57 @@ public class GameScreen implements Screen {
 
     // Guardar (placeholder)
     private void dibujarGuardar(int screenWidth, int screenHeight) {
+        // Título
         font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "GUARDAR PARTIDA", screenWidth / 2 - 120, screenHeight - 100);
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
+        String titulo = "GUARDAR PARTIDA";
+        float tituloWidth = font.getData().scaleX * titulo.length() * 10;
+        font.draw(spriteBatch, titulo, (screenWidth - tituloWidth) / 2, screenHeight - 100);
         font.getData().setScale(1.0f);
 
-        font.draw(spriteBatch, "Guardar progreso actual", screenWidth / 2 - 100, screenHeight / 2);
-        font.draw(spriteBatch, "(Implementación pendiente)", screenWidth / 2 - 100, screenHeight / 2 - 30);
+        // Opciones
+        String[] opciones = {
+            "Guardar partida",
+            "Guardar y salir al menú",
+            "Cancelar"
+        };
+
+        float startX = screenWidth / 2 - 100;
+        float startY = screenHeight / 2 + 80;
+        float espacio = 50;
+
+        for (int i = 0; i < opciones.length; i++) {
+            if (i == selectedSaveOption) {
+                // Fondo para opción seleccionada
+                spriteBatch.setColor(0.3f, 0.3f, 0.5f, 0.8f);
+                spriteBatch.draw(whitePixel, startX - 20, startY - i * espacio - 20, 240, 35);
+                spriteBatch.setColor(Color.WHITE);
+
+                // Texto seleccionado
+                font.setColor(Color.YELLOW);
+                font.draw(spriteBatch, "> " + opciones[i], startX, startY - i * espacio);
+                font.setColor(Color.WHITE);
+            } else {
+                font.draw(spriteBatch, "  " + opciones[i], startX, startY - i * espacio);
+            }
+        }
+
+        // Información adicional
+        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
+        font.getData().setScale(0.9f);
+
+        // Mostrar estadísticas actuales
+        String info = "Pokémon en equipo: " + player.getEntrenador().getEquipo().size() +
+            " | Ítems en inventario: " + player.getInventario().getCantidadTotal();
+        float infoWidth = font.getData().scaleX * info.length() * 6;
+        font.draw(spriteBatch, info, (screenWidth - infoWidth) / 2, startY - opciones.length * espacio - 20);
+
+        // Instrucciones
+        String instrucciones = "Flechas: Navegar | ENTER: Seleccionar | ESC: Volver";
+        float insWidth = font.getData().scaleX * instrucciones.length() * 6;
+        font.draw(spriteBatch, instrucciones, (screenWidth - insWidth) / 2, 50);
+
+        font.getData().setScale(1.0f);
     }
 
     // Opciones (placeholder)
