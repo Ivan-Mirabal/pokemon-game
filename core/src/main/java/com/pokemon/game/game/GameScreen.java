@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TiledMapTile;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -61,6 +62,7 @@ public class GameScreen implements Screen {
 
     // Capa de colisiones
     private TiledMapTileLayer collisionLayer;
+    private TiledMapTileLayer encounterLayer;
 
     // Límites de la cámara
     private float cameraMinX, cameraMaxX, cameraMinY, cameraMaxY;
@@ -79,12 +81,18 @@ public class GameScreen implements Screen {
     private final BitmapFont font;
     private final Texture whitePixel;
 
+    // Sistema de recolección
+    private SistemaRecoleccion sistemaRecoleccion;
+    private boolean estaEnHierba = false;
+
     private PokedexScreen pokedexScreen;
 
     private EncountersManager encountersManager;
 
     private int selectedSaveOption = 0; // Para navegar en menú SAVE
 
+    private boolean legendaryEncountered = false;
+    private boolean legendaryEventActive = false;
 
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY) {
         this.game = game;
@@ -97,6 +105,8 @@ public class GameScreen implements Screen {
         this.font.getData().setScale(0.8f);
 
         this.encountersManager = new EncountersManager();
+        this.legendaryEncountered = false;
+        this.legendaryEventActive = false;
 
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.WHITE);
@@ -104,16 +114,30 @@ public class GameScreen implements Screen {
         this.whitePixel = new Texture(pixmap);
         pixmap.dispose();
 
+        this.sistemaRecoleccion = null;
+
     }
 
     @Override
     public void show() {
-        loadMap(initialMap, startX, startY);
-        game.musics.stopmenumusic();
-        game.musics.startopenworldmusic();
-        cargarSpritesPokemon();
+        // Evita recargar el mapa si ya está cargado
+        // Solo cargar si es la primera vez
+        if (mapa == null) {
+            loadMap(initialMap, startX, startY);
+            game.musics.stopmenumusic();
+            game.musics.startopenworldmusic();
+            cargarSpritesPokemon();
+            pokedexScreen = new PokedexScreen(player);
+        } else {
+            // Si ya hay un mapa cargado, solo restaurar la música
+            // y asegurar que el jugador esté en el estado correcto
+            game.musics.stopBattleMusic(); // Detener música de combate si hay
+            game.musics.startopenworldmusic();
+            player.setMenuState(MenuState.NONE);
 
-        pokedexScreen = new PokedexScreen(player);
+            // Actualizar la cámara
+            updateCamera();
+        }
     }
 
     private void loadMap(String mapFile, float playerX, float playerY) {
@@ -134,16 +158,40 @@ public class GameScreen implements Screen {
         renderer = new OrthogonalTiledMapRenderer(mapa, 1f);
         collisionLayer = (TiledMapTileLayer) mapa.getLayers().get("Colisiones");
 
+        // Cargar capa de encuentros
+        encounterLayer = (TiledMapTileLayer) mapa.getLayers().get("HierbaAlta");
+
+        // Si la capa no existe, crearla como null para evitar errores
+        if (encounterLayer == null) {
+            System.out.println("⚠️ Advertencia: No se encontró capa 'Encounters' en el mapa");
+        }
+
         if (spriteBatch == null) {
             spriteBatch = new SpriteBatch();
         }
 
         if (player == null) {
             player = new Player("sprites/player.png", playerX, playerY, tileWidth, tileHeight, this);
+
+            // AQUÍ es donde debes inicializar sistemaRecoleccion
+            if (sistemaRecoleccion == null) {
+                sistemaRecoleccion = new SistemaRecoleccion(player);
+                System.out.println("✅ Sistema de recolección inicializado");
+            }
         } else {
             player.x = playerX;
             player.y = playerY;
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
+
+            // Si el sistema no estaba inicializado, inicialízar
+            if (sistemaRecoleccion == null) {
+                sistemaRecoleccion = new SistemaRecoleccion(player);
+                System.out.println("✅ Sistema de recolección inicializado (mapa cambiado)");
+            }
+        }
+
+        if (sistemaRecoleccion == null) {
+            sistemaRecoleccion = new SistemaRecoleccion(player);
         }
 
         if (camara == null) {
@@ -158,6 +206,80 @@ public class GameScreen implements Screen {
 
         calculateCameraBounds(viewport.getWorldWidth(), viewport.getWorldHeight());
         updateCamera();
+
+        if (currentMapFile.equals("maps/mapa_arceus.tmx")) {
+            PokedexEntry arceusEntry = player.getEntrenador().getPokedex().getEntrada("Arceus");
+
+            // Si YA VIÓ a Arceus, redirigir inmediatamente
+            if (arceusEntry != null && arceusEntry.isVisto()) {
+                loadMap("maps/mapa_norte.tmx", player.x, tileHeight * 2);
+                return;
+            }
+
+            // Si no cumple requisitos, redirigir
+            if (player.getEntrenador().getEspeciesCompletamenteInvestigadas() < 5) {
+                loadMap("maps/mapa_norte.tmx", player.x, player.y);
+                return;
+            }
+
+            // Si es la primera vez, activar evento
+            System.out.println("\n¡EVENTO LEGENDARIO ACTIVADO!");
+
+            // Pequeño delay y combate
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1000);
+                    Gdx.app.postRunnable(() -> {
+                        PokemonSalvaje arceus = FabricaPokemon.crearPokemonSalvaje("Arceus", 45);
+                        iniciarCombate(arceus);
+                    });
+                } catch (InterruptedException e) {}
+            }).start();
+        }
+    }
+
+    // Método para verificar si el jugador está en zona de encuentros
+    private boolean isInEncounterZone() {
+        if (encounterLayer == null) {
+            return false;
+        }
+
+        // Convertir posición del jugador a coordenadas de tile
+        int tileX = (int) (player.x / tileWidth);
+        int tileY = (int) (player.y / tileHeight);
+
+        // Verificar límites del mapa
+        if (tileX < 0 || tileX >= mapWidth || tileY < 0 || tileY >= mapHeight) {
+            return false;
+        }
+
+        // Verificar si hay un tile en la capa de hierba alta
+        TiledMapTileLayer.Cell cell = encounterLayer.getCell(tileX, tileY);
+        if (cell == null) {
+            return false;
+        }
+
+        TiledMapTile tile = cell.getTile();
+        if (tile == null) {
+            return false;
+        }
+
+        // Obtener el GID global del tile
+        int gid = tile.getId();
+
+        // Los GIDs de hierba alta
+        return gid == 67 || gid == 63 || gid == 585 || gid == 120;
+    }
+
+    private boolean verificarSiEstaEnHierba(float x, float y) {
+        TiledMapTileLayer hierbaLayer = (TiledMapTileLayer) mapa.getLayers().get("HierbaAlta");
+        if (hierbaLayer == null) return false;
+
+        int tileX = (int)(x / tileWidth);
+        int tileY = (int)(y / tileHeight);
+
+        TiledMapTileLayer.Cell celda = hierbaLayer.getCell(tileX, tileY);
+        return (celda != null && celda.getTile() != null);
     }
 
     private void checkMapTransition() {
@@ -173,15 +295,66 @@ public class GameScreen implements Screen {
         float playerTop = player.y + player.height / 2;
 
         if (playerTop >= worldHeightPx - margin && currentMapInfo.northMap != null) {
+
+            // CASO ESPECIAL: MAPA NORTE → MAPA ARCEUS (LEGENDARIO)
+            if (currentMapFile.equals("maps/mapa_norte.tmx") &&
+                currentMapInfo.northMap.equals("maps/mapa_arceus.tmx")) {
+
+                // 1. Verificar requisitos de investigación (5 especies nivel 10)
+                int especiesCompletas = player.getEntrenador().getEspeciesCompletamenteInvestigadas();
+
+                if (especiesCompletas < 5) {
+                    // ❌ NO CUMPLE REQUISITOS - Mostrar mensaje
+                    System.out.println("❌ ¡Necesitas investigar completamente 5 especies Pokémon!");
+                    System.out.println("🔬 Actual: " + especiesCompletas + "/5 especies");
+                    System.out.println("📍 Ve a tu Pokédex para ver tu progreso");
+                    return; // BLOQUEAR ACCESO
+                }
+
+                // 2. Verificar si YA ENCONTRÓ a Arceus (usando la Pokédex)
+                PokedexEntry arceusEntry = player.getEntrenador().getPokedex().getEntrada("Arceus");
+                boolean yaVioArceus = (arceusEntry != null && arceusEntry.isVisto());
+
+                if (yaVioArceus) {
+                    // ❌ YA ENCONTRÓ ARCEUS - Portal cerrado permanentemente
+                    System.out.println("❌ El portal legendario se ha sellado...");
+                    System.out.println("✨ Has completado el encuentro legendario.");
+                    return; // BLOQUEAR ACCESO PERMANENTEMENTE
+                }
+
+                // ✅ TODAS LAS CONDICIONES CUMPLIDAS - ACCESO PERMITIDO
+                System.out.println("✨ ¡Portal legendario activado!");
+                System.out.println("🌀 Teletransportándote a la dimensión de Arceus...");
+
+                transitionToMap(currentMapInfo.northMap, player.x, tileHeight * 2);
+                transitionCooldown = TRANSITION_COOLDOWN_TIME;
+                return; // IMPORTANTE: Salir aquí para no procesar otras transiciones
+            }
+
             transitionToMap(currentMapInfo.northMap, player.x, tileHeight * 2);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
-        } else if (playerBottom <= margin && currentMapInfo.southMap != null) {
+
+        }
+
+        else if (playerBottom <= margin && currentMapInfo.southMap != null) {
+
+            // CASO ESPECIAL: SALIR DE MAPA_ARCEUS (volver al mapa_norte)
+            if (currentMapFile.equals("maps/mapa_arceus.tmx")) {
+                System.out.println("🌀 Regresando al mundo normal...");
+            }
+
             transitionToMap(currentMapInfo.southMap, player.x, worldHeightPx - tileHeight * 3);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
-        } else if (playerRight >= worldWidthPx - margin && currentMapInfo.eastMap != null) {
+
+        }
+
+        else if (playerRight >= worldWidthPx - margin && currentMapInfo.eastMap != null) {
             transitionToMap(currentMapInfo.eastMap, tileWidth * 2, player.y);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
-        } else if (playerLeft <= margin && currentMapInfo.westMap != null) {
+
+        }
+
+        else if (playerLeft <= margin && currentMapInfo.westMap != null) {
             transitionToMap(currentMapInfo.westMap, worldWidthPx - tileWidth * 3, player.y);
             transitionCooldown = TRANSITION_COOLDOWN_TIME;
         }
@@ -212,15 +385,35 @@ public class GameScreen implements Screen {
         camara.update();
     }
 
-    public boolean isCollision(float x, float y) {
-        return isCollisionRect(x, y, 0, 0); // Para compatibilidad
+    private void iniciarEncuentroLegendario() {
+        if (!legendaryEventActive) return;
+
+        // Detener música del mundo
+        if (game.musics != null) {
+            game.musics.stopopenworldmusic();
+            // Aquí podrías poner música especial si tienes
+        }
+
+        System.out.println("==========================================");
+        System.out.println("¡UN PODER CÓSMICO EMANA DEL CIELO!");
+        System.out.println("¡ARCEUS HA APARECIDO!");
+        System.out.println("==========================================");
+
+        // Crear Arceus nivel 45 (como está en el JSON)
+        PokemonSalvaje arceus = FabricaPokemon.crearPokemonSalvaje("Arceus", 45);
+
+        // Usar el sistema de combate normal
+        iniciarCombate(arceus);
+
+        legendaryEventActive = false;
     }
+
 
     // NUEVO MÉTODO: Verifica colisión con el rectángulo completo del jugador
     public boolean isCollisionRect(float centerX, float centerY, float width, float height) {
-        // Usar un rectángulo más pequeño (70% del tamaño original)
-        float collisionWidth = width * 0.7f;
-        float collisionHeight = height * 0.7f;
+        // Usar un rectángulo más pequeño
+        float collisionWidth = width * 0.5f;
+        float collisionHeight = height * 0.5f;
 
         // Calcular los bordes del rectángulo de colisión
         float left = centerX - collisionWidth / 2;
@@ -284,6 +477,12 @@ public class GameScreen implements Screen {
             player.update(delta);
             checkMapTransition();
             updateCamera();
+
+            // Actualizar sistema de recolección simple
+            if (sistemaRecoleccion != null) {
+                boolean estaColisionando = isCollisionRect(player.x, player.y, player.width, player.height);
+                sistemaRecoleccion.actualizar(delta, estaColisionando);
+            }
         }
 
         // 4. Limpiar pantalla
@@ -318,15 +517,19 @@ public class GameScreen implements Screen {
 
             // Solo verificar encuentros si el jugador se está moviendo
             if (player.isMoving()) {
-                String zonaActual = obtenerNombreMapaParaEncuentros(); // <-- CAMBIADO
-                int nivelPromedio = calcularNivelPromedioEquipo();
+                // PRIMERO: Verificar si está en zona de encuentros
+                if (isInEncounterZone()) {
+                    String zonaActual = obtenerNombreMapaParaEncuentros();
+                    int nivelPromedio = calcularNivelPromedioEquipo();
 
-                PokemonSalvaje encontrado = encountersManager.checkEncounter(
-                    zonaActual, nivelPromedio, player.isMoving());
+                    PokemonSalvaje encontrado = encountersManager.checkEncounter(
+                        zonaActual, nivelPromedio, player.isMoving());
 
-                if (encontrado != null) {
-                    iniciarCombate(encontrado);
+                    if (encontrado != null) {
+                        iniciarCombate(encontrado);
+                    }
                 }
+                // Si NO está en zona de encuentros, no pasa nada
             }
         }
     }
@@ -341,8 +544,6 @@ public class GameScreen implements Screen {
 
     // Manejar entrada del teclado
     private void handleInput() {
-        // NOTA IMPORTANTE: Ya NO hay manejo de combate aquí
-        // El combate se maneja completamente en CombateScreen
 
         // Tecla I para abrir/cerrar menú principal
         if (Gdx.input.isKeyJustPressed(Keys.I)) {
@@ -354,6 +555,13 @@ public class GameScreen implements Screen {
                 player.setMenuState(MenuState.NONE);
                 game.musics.stoppausemusic();
                 game.musics.startopenworldmusic();
+            }
+        }
+
+        //Tecla E para recolectar
+        if (Gdx.input.isKeyJustPressed(Keys.E)) {
+            if (player.getMenuState() == MenuState.NONE && sistemaRecoleccion != null) {
+                sistemaRecoleccion.intentarRecolectar();
             }
         }
 
@@ -401,7 +609,7 @@ public class GameScreen implements Screen {
                 player.setMenuState(MenuState.INVENTORY);
             }
 
-            // ¡IMPORTANTE! Salir del switch para que no entre en otros manejos
+            // Salir del switch para que no entre en otros manejos
             return;
         }
 
@@ -623,7 +831,6 @@ public class GameScreen implements Screen {
         // Si player es nulo, intentamos esperar un momento o forzar su creación
         if (this.player == null) {
             System.out.println("Wait... player era nulo, intentando inicializar...");
-            // Aquí deberías llamar al método que instancia a tu jugador si no se ha hecho
         }
 
         if (this.player != null && datos != null) {
@@ -664,11 +871,9 @@ public class GameScreen implements Screen {
                 break;
             case POKEMON_TEAM:
                 dibujarEquipoPokemon(screenWidth, screenHeight);
-                // NO dibujar instrucciones generales aquí
                 break;
             case POKEMON_DETAIL:
                 dibujarDetallePokemon(screenWidth, screenHeight);
-                // NO dibujar instrucciones generales aquí
                 break;
             case POKEDEX:
                 dibujarPokedex(screenWidth, screenHeight);
@@ -820,11 +1025,6 @@ public class GameScreen implements Screen {
             font.setColor(Color.YELLOW);
             font.draw(spriteBatch, "▶", flechaX, startY - (indiceActual * espacio));
         }
-
-        // 6. INSTRUCCIONES
-        font.setColor(new Color(0.6f, 0.6f, 0.8f, 1));
-        String instrucciones = "←→: Cambiar columna  ↑↓: Navegar  Enter: Seleccionar  ESC: Volver";
-        font.draw(spriteBatch, instrucciones, 200, 50);
     }
 
     // Método auxiliar para dibujar columna
@@ -869,8 +1069,8 @@ public class GameScreen implements Screen {
 
         // Borde
         spriteBatch.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
-        spriteBatch.draw(whitePixel, panelX, panelY, panelAncho, 2);
-        spriteBatch.draw(whitePixel, panelX, panelY + panelAlto, panelAncho, 2);
+        spriteBatch.draw(whitePixel, panelX, panelY - 10, panelAncho, 2);
+        spriteBatch.draw(whitePixel, panelX, panelY + panelAlto + 10, panelAncho, 2);
         spriteBatch.setColor(Color.WHITE);
 
         // Información
@@ -1942,17 +2142,12 @@ public class GameScreen implements Screen {
                 instrucciones = "Flechas ↑↓: Navegar Pokémon | ←→: Seleccionar acción | 1-4: Acciones rápidas | Enter: Ejecutar | ESC: Volver";
                 break;
             case INVENTORY:
-                instrucciones = "Flechas: Navegar | Enter: Seleccionar item | 1/2/3: Acciones | ESC: Volver";
+                instrucciones = "Flechas: Navegar | Enter: Seleccionar item | ESC: Volver";
                 break;
             case CRAFTING:
                 instrucciones = "Flechas ↑↓: Navegar recetas | Enter: Craftear | ESC: Volver al menú principal";
                 break;
-            case OPTIONS:
-                instrucciones = "Flechas: Navegar opciones | Enter: Seleccionar | ESC: Volver al menú principal";
-                break;
-            // NO agregar case para POKEDEX - dejamos que la Pokédex maneje sus propias instrucciones
             default:
-                instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC: Volver";
                 break;
         }
 
@@ -1968,14 +2163,28 @@ public class GameScreen implements Screen {
     // HUD durante el juego
     private void dibujarHUD() {
         spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+        // Guardar color original
+        Color originalColor = spriteBatch.getColor();
+
         spriteBatch.begin();
 
-        float hudX = 10;
-        float hudY = Gdx.graphics.getHeight() - 30;
+        try {
+            float hudX = 10;
+            float hudY = Gdx.graphics.getHeight() - 30;
 
-        font.draw(spriteBatch, "I - Menú", hudX, hudY);
+            font.draw(spriteBatch, "I - Menú", hudX, hudY);
 
-        spriteBatch.end();
+            if (sistemaRecoleccion != null) {
+                sistemaRecoleccion.dibujarInterfaz(spriteBatch, font,
+                    Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            }
+
+        } finally {
+            spriteBatch.end();
+            spriteBatch.setColor(originalColor);
+        }
+
         spriteBatch.setProjectionMatrix(camara.combined);
     }
 
@@ -2052,6 +2261,9 @@ public class GameScreen implements Screen {
     }
 
     public void iniciarCombate(PokemonSalvaje pokemonSalvaje) {
+        // Guardar posición actual para referencia (opcional, para debugging)
+        System.out.println("📍 Posición antes del combate: " + player.x + ", " + player.y);
+
         // Detener música del mundo abierto
         if (game.musics != null) {
             game.musics.stopopenworldmusic();
@@ -2094,19 +2306,25 @@ public class GameScreen implements Screen {
         // Crear combate
         Combate combate = new Combate(pokemonJugador, pokemonSalvaje);
 
-        // Cambiar a pantalla de combate PASANDO LA UBICACIÓN
+        // Cambiar a pantalla de combate
         game.setScreen(new CombateScreen(game, this, combate, player));
     }
 
     // Este método se llama desde CombateScreen para reanudar el juego
     public void reanudarDespuesCombate() {
-        // Restaurar música del mundo
+        // Restaurar música
         if (game.musics != null) {
             game.musics.startopenworldmusic();
         }
 
-        // Asegurar que el jugador no esté en menú
         player.setMenuState(MenuState.NONE);
+
+        // ✅ SOLO ESTA PARTE NUEVA (el resto igual):
+        // Si estamos en mapa_arceus, teletransportar automáticamente
+        if (currentMapFile != null && currentMapFile.equals("maps/mapa_arceus.tmx")) {
+            System.out.println("El portal te devuelve al mundo normal...");
+            loadMap("maps/mapa_norte.tmx", player.x, tileHeight * 2);
+        }
     }
 
     private void validarLimiteInventario() {

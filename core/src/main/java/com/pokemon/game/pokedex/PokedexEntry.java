@@ -43,7 +43,13 @@ public class PokedexEntry {
 
     // Victoria en combate (+1 punto)
     public void registrarVictoriaCombate() {
-        incrementarNivelInvestigacion(1);
+        // SI ES ARCEUS, NIVEL 10 INMEDIATO (incluso si solo ganas)
+        if (this.especie.equalsIgnoreCase("Arceus")) {
+            nivelInvestigacion = 10;
+            System.out.println("¡Has derrotado a ARCEUS! Registro completo.");
+        } else {
+            incrementarNivelInvestigacion(1);
+        }
     }
 
     // Captura exitosa (+2 puntos)
@@ -54,7 +60,14 @@ public class PokedexEntry {
             primeraCapturaFecha = obtenerFechaActual();
         }
         vecesCapturado++;
-        incrementarNivelInvestigacion(2);
+
+        // SI ES ARCEUS, NIVEL 10 INMEDIATO
+        if (this.especie.equalsIgnoreCase("Arceus")) {
+            nivelInvestigacion = 10;
+            System.out.println("¡ARCEUS registrado completamente en la Pokédex!");
+        } else {
+            incrementarNivelInvestigacion(2);
+        }
     }
 
     private void incrementarNivelInvestigacion(int puntos) {

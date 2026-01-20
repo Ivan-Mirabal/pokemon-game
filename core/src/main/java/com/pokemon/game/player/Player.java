@@ -2,6 +2,8 @@ package com.pokemon.game.player;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -26,6 +28,8 @@ public class Player {
     public float width, height;
     public float speed;
     public TextureRegion currentFrame;
+
+    private Texture whitePixel;
 
     // Variables de Animación
     private float stateTime;
@@ -97,6 +101,12 @@ public class Player {
 
         spriteSheet = new Texture(Gdx.files.internal(texturePath));
 
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        this.whitePixel = new Texture(pixmap);
+        pixmap.dispose();
+
         int spriteWidth = spriteSheet.getWidth() / frameCols;
         int spriteHeight = spriteSheet.getHeight() / frameRows;
 
@@ -128,7 +138,7 @@ public class Player {
 
         // CORRECCIÓN: Usar nombres consistentes
 
-        inventario.agregarItem(new Pokeball(), 5);
+        inventario.agregarItem(new Pokeball("Poké Ball", 1.0f), 5);
         inventario.agregarItem(new Curacion("Poción", 20), 3);
         inventario.agregarItem(new Recurso("Planta", "Planta"), 5);
         inventario.agregarItem(new Recurso("Guijarro", "Guijarro"), 8);
@@ -140,6 +150,10 @@ public class Player {
         this.sistemaCrafteo = new Crafteo(inventario);
         this.seleccionCrafteo = 0;
 
+    }
+
+    public Texture getWhitePixel() {
+        return whitePixel;
     }
 
     @SuppressWarnings("unchecked")
@@ -496,7 +510,7 @@ public class Player {
 
         // 1. Verificar si el Pokémon está debilitado
         if (pokemon.estaDebilitado()) {
-            System.out.println(pokemon.getApodo() + " está debilitado. Necesitas un Revivir.");
+            System.out.println(pokemon.getApodo() + " está debilitado.");
             return false;
         }
 
@@ -514,7 +528,7 @@ public class Player {
         // 4. Consumir item
         selectedItemSlot.decrementar(1);
         if (selectedItemSlot.getCantidad() <= 0) {
-            inventario.removerItem(selectedItemSlot.getItem().getNombre(), 0);
+            inventario.removerItem(selectedItemSlot.getItem().getNombre(), 1);
         }
 
         System.out.println("¡Usaste " + item.getNombre() + " en " +
@@ -523,7 +537,7 @@ public class Player {
         // 5. Resetear
         selectedItemSlot = null;
         selectedItemAction = ItemAction.NONE;
-        return true; // ¡IMPORTANTE! Devolver true para indicar éxito
+        return true; // Devolver true para indicar éxito
     }
 
     public void cancelarUsoItem() {
@@ -540,7 +554,6 @@ public class Player {
             case OPTIONS:
                 return 4;
             case POKEDEX:
-                // Para la Pokédex, el máximo es el número de entradas en la página actual
                 List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
                 int inicio = pokedexPage * POKEDEX_ENTRIES_PER_PAGE;
                 int fin = Math.min(inicio + POKEDEX_ENTRIES_PER_PAGE, entradas.size());
@@ -548,28 +561,6 @@ public class Player {
             default:
                 return 0;
         }
-    }
-
-    // Métodos para manejar inventario
-    public Ranura getItemSeleccionado() {
-        return itemSeleccionado;
-    }
-
-    public void usarItemSeleccionado() {
-        if (itemSeleccionado != null) {
-            usarItem(itemSeleccionado.getItem().getNombre());
-        }
-    }
-
-    public void tirarItemSeleccionado() {
-        if (itemSeleccionado != null) {
-            inventario.removerItem(itemSeleccionado.getItem().getNombre(), 1);
-            System.out.println("Has tirado 1 " + itemSeleccionado.getItem().getNombre());
-        }
-    }
-
-    public void cancelarSeleccionItem() {
-        itemSeleccionado = null;
     }
 
     public void dispose() {
@@ -584,35 +575,11 @@ public class Player {
         return seleccionCrafteo;
     }
 
-    public void setSeleccionCrafteo(int seleccion) {
-        this.seleccionCrafteo = seleccion;
-    }
-
     public void moverSeleccionCrafteoArriba() {
         seleccionCrafteo--;
         if (seleccionCrafteo < 0) {
             seleccionCrafteo = sistemaCrafteo.getCantidadRecetas() - 1;
         }
-    }
-
-    public int getPaginaCrafteo() {
-        return paginaCrafteo;
-    }
-
-    public void setPaginaCrafteo(int pagina) {
-        this.paginaCrafteo = pagina;
-    }
-
-    public void siguientePaginaCrafteo() {
-        int totalPaginas = (int) Math.ceil(sistemaCrafteo.getCantidadRecetas() / (float) RECETAS_POR_PAGINA);
-        paginaCrafteo = (paginaCrafteo + 1) % totalPaginas;
-        seleccionCrafteo = paginaCrafteo * RECETAS_POR_PAGINA;
-    }
-
-    public void anteriorPaginaCrafteo() {
-        int totalPaginas = (int) Math.ceil(sistemaCrafteo.getCantidadRecetas() / (float) RECETAS_POR_PAGINA);
-        paginaCrafteo = (paginaCrafteo - 1 + totalPaginas) % totalPaginas;
-        seleccionCrafteo = paginaCrafteo * RECETAS_POR_PAGINA;
     }
 
     public void moverSeleccionCrafteoAbajo() {
@@ -651,24 +618,7 @@ public class Player {
         }
     }
 
-    // Método para cambiar apodo
-    public void cambiarApodoPokemon(String nuevoApodo) {
-        if (getEntrenador().getEquipo().isEmpty()) return;
-
-        // ❌ ANTES: Usaba pokemonMenuSelection
-        // PokemonJugador pokemon = getEntrenador().getEquipo().get(pokemonMenuSelection);
-
-        // ✅ AHORA: Usa el método getPokemonSeleccionado() que ya corregiste
-        PokemonJugador pokemon = getPokemonSeleccionado();  // ¡Esto usa pokemonTeamSelection!
-
-        if (pokemon == null) return;
-
-        pokemon.setApodo(nuevoApodo);
-        System.out.println("¡Ahora " + pokemon.getNombre() + " se llama " + nuevoApodo + "!");
-    }
-
     // Método para seleccionar Pokémon en menú
-    // Método para seleccionar Pokémon en menú - YA ESTÁ CORRECTO
     public PokemonJugador getPokemonSeleccionado() {
         List<PokemonJugador> equipo = getEntrenador().getEquipo();
         if (equipo.isEmpty()) return null;
@@ -776,7 +726,6 @@ public class Player {
         return pokedexSelectedSpecies;
     }
 
-    // AGREGAR este método:
     public void setPokedexSelectedSpecies(String species) {
         this.pokedexSelectedSpecies = species;
     }
@@ -788,8 +737,6 @@ public class Player {
     public void setPokedexPage(int page) {
         this.pokedexPage = page;
     }
-
-    // REEMPLAZAR los métodos existentes por estos:
 
     public void movePokedexUp() {
         List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
@@ -862,8 +809,6 @@ public class Player {
     public int getInventoryColumna() { return inventarioColumna; }
     public int getInventoryIndice() { return inventarioIndice; }
     public void setInventoryIndice(int indice) { this.inventarioIndice = indice; }
-
-    // AÑADIR AL FINAL DE Player.java (antes del cierre de clase):
 
 // ============ MÉTODOS PARA SISTEMA DE GUARDADO ============
 
@@ -974,6 +919,12 @@ public class Player {
         System.out.println("🎮 ¡Datos cargados exitosamente!");
     }
 
+    public boolean isLegendaryEncountered() {
+        // Verificar si Arceus ya ha sido visto en la Pokédex
+        PokedexEntry arceusEntry = this.getEntrenador().getPokedex().getEntrada("Arceus");
+        return arceusEntry != null && arceusEntry.isVisto();
+    }
+
 // ============ MÉTODOS PRIVADOS AUXILIARES ============
 
     /**
@@ -1046,42 +997,55 @@ public class Player {
     /**
      * Crea un ítem por su nombre
      */
+    /**
+     * Crea un ítem por su nombre (VERSIÓN CORREGIDA)
+     */
     private Item crearItemPorNombre(String nombreItem) {
         if (nombreItem == null || nombreItem.isEmpty()) {
             return null;
         }
 
-        String nombreLower = nombreItem.toLowerCase();
+        // 1. POKÉBALLS
+        if (nombreItem.equals("Poké Ball")) {
+            Pokeball pb = new Pokeball();
+            pb.setNombre("Poké Ball");
+            pb.setTasaCaptura(1.0f);
+            return pb;
+        }
+        else if (nombreItem.equals("Super Poké Ball")) {
+            Pokeball superBall = new Pokeball();
+            superBall.setNombre("Super Poké Ball");
+            superBall.setTasaCaptura(1.5f); // ¡CORRECCIÓN CRÍTICA!
+            return superBall;
+        }
 
-        // Sistema de ítems básicos
-        switch (nombreLower) {
-            case "pokeball":
-            case "poké ball":
-                return new Pokeball();
+        // 2. POCIONES
+        else if (nombreItem.equals("Poción")) {
+            return new Curacion("Poción", 20);
+        }
+        else if (nombreItem.equals("Poción Grande")) {
+            return new Curacion("Poción Grande", 50); // ¡50 PS, no 20!
+        }
 
-            case "poción":
-                return new Curacion("Poción", 20);
+        // 3. RECURSOS
+        else if (nombreItem.equals("Metal")) {
+            return new Recurso("Metal", "Metal");
+        }
+        else if (nombreItem.equals("Planta")) {
+            return new Recurso("Planta", "Planta");
+        }
+        else if (nombreItem.equals("Guijarro")) {
+            return new Recurso("Guijarro", "Guijarro");
+        }
+        else if (nombreItem.equals("Baya")) {
+            return new Recurso("Baya", "Baya");
+        }
 
-            case "superpoción":
-            case "super poción":
-                return new Curacion("Superpoción", 50);
-
-            case "metal":
-                return new Recurso("Metal", "Material de crafteo");
-
-            case "planta":
-                return new Recurso("Planta", "Material de crafteo");
-
-            case "guijarro":
-                return new Recurso("Guijarro", "Material de crafteo");
-
-            case "baya":
-                return new Recurso("Baya", "Fruta curativa");
-
-            default:
-                System.out.println("⚠️ Item no reconocido: " + nombreItem);
-                // Crear recurso genérico como fallback
-                return new Recurso(nombreItem, "Ítem guardado");
+        // 4. FALLBACK - Si no se reconoce, crear recurso genérico
+        else {
+            System.out.println("⚠️ Item no reconocido en carga: " + nombreItem);
+            // Intentar crear como recurso genérico
+            return new Recurso(nombreItem, "Ítem guardado");
         }
     }
 

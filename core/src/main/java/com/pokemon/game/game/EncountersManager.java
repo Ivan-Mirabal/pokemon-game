@@ -3,9 +3,9 @@ package com.pokemon.game.game;
 import com.pokemon.game.pokemon.*;
 
 public class EncountersManager {
-    // En EncountersManager.java
-    private static final float TIEMPO_MINIMO_ENTRE_ENCUENTROS = 3.0f; // 3 segundos es suficiente
-    private static final float PROBABILIDAD_BASE = 0.3f; // 30% es razonable
+
+    private static final float TIEMPO_MINIMO_ENTRE_ENCUENTROS = 15.0f;
+    private static final float PROBABILIDAD_BASE = 0.01f;
 
     private float tiempoDesdeUltimoEncuentro;
     private boolean puedeEncontrarPokemon;
@@ -39,7 +39,6 @@ public class EncountersManager {
             return null;
         }
 
-        // Solo este mensaje es útil
         System.out.println("[Encounters] ¡Encuentro generado!");
 
         PokemonSalvaje encontrado = FabricaPokemon.generarEncuentroAleatorio(zona, nivelJugador);

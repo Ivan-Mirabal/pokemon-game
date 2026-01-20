@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.Align;
 import com.pokemon.game.*;
 import com.pokemon.game.player.*;
+import com.pokemon.game.pokedex.PokedexEntry;
 import com.pokemon.game.pokemon.*;
 import com.pokemon.game.item.*;
 import java.util.*;
@@ -58,10 +59,10 @@ public class CombateScreen implements Screen {
     private int ultimoIndiceHistorial;
 
     // Posiciones (ajustadas para 96x96)
-    private final float JUGADOR_X = 150;
-    private final float JUGADOR_Y = 100;
-    private final float RIVAL_X = 500;
-    private final float RIVAL_Y = 320;
+    private final float JUGADOR_X = 200;
+    private final float JUGADOR_Y = 120;
+    private final float RIVAL_X = 505;
+    private final float RIVAL_Y = 300;
 
     // Tamaño de sprites en combate
     private final int SPRITE_SIZE = 96;
@@ -702,7 +703,7 @@ public class CombateScreen implements Screen {
         int screenHeight = Gdx.graphics.getHeight();
 
         // Panel inferior completo
-        float panelY = MENU_Y;
+        float panelY = MENU_Y - 50;
         float panelAlto = MENU_HEIGHT;
 
         // Fondo del panel
@@ -782,17 +783,13 @@ public class CombateScreen implements Screen {
         // Restaurar tamaño de fuente
         font.getData().setScale(1.0f);
 
-        // Instrucciones simplificadas
-        font.setColor(new Color(0.7f, 0.7f, 0.9f, 1));
-        font.draw(batch, "FLECHAS: Moverse  1-4: Selección rápida  ENTER: Confirmar",
-            50, panelY - 10);
     }
 
     private void dibujarMenuMovimientos() {
         List<Movimiento> movimientos = combate.getPokemonJugador().getMovimientos();
 
         // Usar todo el panel inferior
-        float panelY = MENU_Y;
+        float panelY = MENU_Y - 50;
         float panelAlto = MENU_HEIGHT;
         float panelAncho = Gdx.graphics.getWidth();
 
@@ -1562,20 +1559,6 @@ public class CombateScreen implements Screen {
         // Ejecutar el turno
         Combate.ResultadoTurno resultado = combate.ejecutarTurnoJugador(seleccionMovimiento);
 
-        // ✅ CORRECCIÓN: Usar combate.getPokemonJugador() en lugar de pokemonJugador
-        if (resultado == Combate.ResultadoTurno.POKEMON_DEBILITADO) {
-            Pokemon pokemonJugadorActual = combate.getPokemonJugador(); // <-- Obtener del combate
-
-            if (pokemonJugadorActual instanceof PokemonJugador) {
-                PokemonJugador pj = (PokemonJugador) pokemonJugadorActual;
-                if (pj.getEntrenador() != null) {
-                    pj.getEntrenador().registrarVictoriaContraPokemon(
-                        combate.getPokemonRival().getEspecie().getNombre()
-                    );
-                }
-            }
-        }
-
         // Preparar mensajes para mostrar
         prepararMensajesParaAccion();
 
@@ -1785,7 +1768,7 @@ public class CombateScreen implements Screen {
                     actualizarEquipoVisible();
                 } else {
                     // No hay más Pokémon vivos - derrota
-                    combate.registrarDerrotaCompleta();
+                    combate.registrarDerrotaCompleta(player.getEntrenador());
                     estadoActual = EstadoMenu.FIN_COMBATE;
                 }
             } else if (!combate.isTurnoJugador()) {
@@ -1823,12 +1806,12 @@ public class CombateScreen implements Screen {
         if (finalizando) return;
         finalizando = true;
 
-        // Dar experiencia si se ganó
-        if (combate.getMotivoFin() != null && combate.getMotivoFin().equals("victoria")) {
-            int exp = combate.getPokemonRival().getNivel() * 10;
-            if (combate.getPokemonJugador() instanceof PokemonJugador) {
-                ((PokemonJugador) combate.getPokemonJugador()).ganarExperiencia(exp);
-            }
+        // Obtener motivo del fin
+        String motivo = combate.getMotivoFin();
+
+        // SOLO otorgar recompensas si es victoria
+        if (motivo != null && motivo.equals("victoria")) {
+            combate.otorgarRecompensasVictoria(player.getEntrenador());
         }
 
         // Restaurar música del mundo
@@ -1837,13 +1820,24 @@ public class CombateScreen implements Screen {
                 game.musics.stopBattleMusic();
                 game.musics.startopenworldmusic();
             } catch (Exception e) {
-                // Si no existe, no pasa nada
+                System.out.println("Música de combate no disponible");
             }
+        }
+
+        PokedexEntry arceusEntry = player.getEntrenador().getPokedex().getEntrada("Arceus");
+        if (arceusEntry != null && arceusEntry.estaCompletamenteInvestigado()) {
+            System.out.println("==========================================");
+            System.out.println("¡OBJETIVO DE LA SIMULACIÓN COMPLETADO!");
+            System.out.println("Has investigado completamente a ARCEUS");
+            System.out.println("==========================================");
+
+            game.setScreen(gameScreen);
         }
 
         // Volver a GameScreen
         game.setScreen(gameScreen);
     }
+
 
     private void actualizarMensajesDesdeHistorial() {
         List<String> historial = combate.getHistorial();

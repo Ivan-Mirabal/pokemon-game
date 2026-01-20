@@ -1,0 +1,314 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "#Water": {
+            "scaleInDock": 5.7072
+        },
+        "Basic Grass Biom things 1.tsx": {
+            "scaleInDock": 2.3979,
+            "scaleInEditor": 3.3538
+        },
+        "Basic Plants.tsx": {
+            "scaleInDock": 3.4281,
+            "scaleInEditor": 1
+        },
+        "Basic_Furniture.tsx": {
+            "scaleInDock": 2.3534,
+            "scaleInEditor": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Basic Grass Biom things 1.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Basic Plants.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Basic_Furniture.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Emoji_Spritesheet_Free.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Fences.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Grass16.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Hills.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Tilled Dirt.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Water.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/Wooden House.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/mapa_centro.tmx": {
+            "scale": 1.544,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 264.89637305699483,
+                "y": 187.49999999999997
+            }
+        },
+        "C:/Users/agonz/Documents/Poo/mapa_centro.tmx#Water": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "C:/Users/agonz/Documents/Poo/mapa_este.tmx": {
+            "scale": 0.7677,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 752.8982675524294,
+                "y": 147.84420997785588
+            }
+        },
+        "C:/Users/agonz/Documents/Poo/mapa_norte.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 239.99999999999997,
+                "y": 159.33333333333331
+            }
+        },
+        "C:/Users/agonz/Documents/Poo/mapa_oeste.tmx": {
+            "scale": 0.8817187499999999,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 240.43948254474566,
+                "y": 160.48201311359207
+            }
+        },
+        "C:/Users/agonz/Documents/Poo/mapa_sur.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 471.99999999999994,
+                "y": 296.66666666666663
+            }
+        },
+        "Emoji_Spritesheet_Free.tsx": {
+            "scaleInDock": 1.8643,
+            "scaleInEditor": 1
+        },
+        "Fences.tsx": {
+            "scaleInDock": 4.2332,
+            "scaleInEditor": 1
+        },
+        "Grass.tsx": {
+            "scaleInDock": 2.1537,
+            "scaleInEditor": 3.5056
+        },
+        "Grass16.tsx": {
+            "scaleInDock": 1.8681,
+            "scaleInEditor": 3.5828
+        },
+        "Hills.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1.8785,
+            "scaleInEditor": 1
+        },
+        "Interiors_free_16x16.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 2.6464
+        },
+        "Paths.tsx": {
+            "scaleInDock": 3.4648,
+            "scaleInEditor": 1
+        },
+        "Poo (arte)/Basic Grass Biom things 1.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Basic Plants.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Basic_Furniture.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Fences.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Grass16.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Hills.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Tilled Dirt.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Water.tsx": {
+            "scaleInDock": 1
+        },
+        "Poo (arte)/Wooden House.tsx": {
+            "scaleInDock": 1
+        },
+        "Room_Builder_free_16x16.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 3.5827
+        },
+        "TX Plant with Shadow.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 2.62
+        },
+        "TX Props with Shadow.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "TX Tileset Grass.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 2.8766
+        },
+        "Tilled Dirt.tsx": {
+            "scaleInDock": 2.1157,
+            "scaleInEditor": 3.8155
+        },
+        "Water.tsx": {
+            "scaleInDock": 4.8799,
+            "scaleInEditor": 1
+        },
+        "Wooden House.tsx": {
+            "scaleInDock": 3.0024,
+            "scaleInEditor": 1
+        },
+        "atlas_16x.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "mapa_arceus.tmx": {
+            "scale": 1.673,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 510.75911536162573,
+                "y": 195.15839808726835
+            }
+        },
+        "mapa_centro.tmx": {
+            "scale": 0.7021,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 520.5811138014528,
+                "y": 422.3045150263496
+            }
+        },
+        "mapa_centro.tmx#Water": {
+            "scaleInDock": 1
+        },
+        "mapa_centro3.tmx": {
+            "scale": 0.8817187499999999,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 479.74481658692184,
+                "y": 320.39695197589936
+            }
+        },
+        "mapa_centro3.tmx#Water": {
+            "scaleInDock": 1
+        },
+        "mapa_este.tmx": {
+            "scale": 1.1614,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 364.6461167556397,
+                "y": 346.5644911313931
+            }
+        },
+        "mapa_fondo.tmx": {
+            "scale": 2.0543,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 214.42827240422525,
+                "y": 169.15737720878158
+            }
+        },
+        "mapa_norte.tmx": {
+            "scale": 1.7994,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 676.6144270312327,
+                "y": 318.7173502278537
+            }
+        },
+        "mapa_oeste.tmx": {
+            "scale": 1.4022,
+            "selectedLayer": 5,
+            "viewCenter": {
+                "x": 520.9670517757809,
+                "y": 521.680216802168
+            }
+        },
+        "mapa_sur.tmx": {
+            "scale": 2.09,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 615.5502392344498,
+                "y": 477.7511961722488
+            }
+        },
+        "mapa_tienda.tmx": {
+            "scale": 1.3726,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 264.8258778959638,
+                "y": 285.22512020982083
+            }
+        },
+        "spr_tileset_sunnysideworld_16px.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1.0625
+        },
+        "xd.tmx": {
+            "scale": 1.5,
+            "selectedLayer": 5,
+            "viewCenter": {
+                "x": 284.66666666666663,
+                "y": 477.66666666666663
+            }
+        },
+        "xd.tmx#Water": {
+            "scaleInDock": 5.7072
+        }
+    },
+    "last.externalTilesetPath": "C:/Users/agonz/Documents/Poo/Mapasr/Tilesr",
+    "last.imagePath": "C:/Users/agonz/Documents/Poo/Mapasss/Tilesr/Sprout Lands - UI Pack - Basic pack/Sprout Lands - UI Pack - Basic pack/emojis-free",
+    "map.height": 20,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 30,
+    "openFiles": [
+    ],
+    "project": "Mapas.tiled-project",
+    "recentFiles": [
+        "mapa_arceus.tmx",
+        "mapa_centro.tmx",
+        "mapa_este.tmx",
+        "mapa_norte.tmx",
+        "mapa_oeste.tmx",
+        "mapa_sur.tmx",
+        "mapa_tienda.tmx",
+        "mapa_fondo.tmx",
+        "Emoji_Spritesheet_Free.tsx",
+        "atlas_16x.tsx",
+        "spr_tileset_sunnysideworld_16px.tsx",
+        "Tilled Dirt.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

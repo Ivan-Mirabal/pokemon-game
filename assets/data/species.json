@@ -607,6 +607,22 @@
       "evolvesTo": "Zoroark",
       "evolutionLevel": 30,
       "evolutionItem": null
+    },
+    {
+      "name": "Arceus",
+      "type1": "NORMAL",
+      "type2": null,
+      "baseHP": 120,
+      "baseAttack": 120,
+      "baseDefense": 120,
+      "baseSpecialAttack": 120,
+      "baseSpecialDefense": 120,
+      "baseSpeed": 120,
+      "ability": "INTIMIDACION",
+      "catchRate": 1.0,
+      "evolvesTo": null,
+      "evolutionLevel": 0,
+      "evolutionItem": null
     }
   ]
 }

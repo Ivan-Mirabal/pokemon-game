@@ -159,10 +159,7 @@ public class Entrenador {
     public List<PokemonJugador> getEquipo() { return new ArrayList<>(equipo); }
     public Pokemon getPokemonActual() { return pokemonActual; }
     public Inventario getInventario() { return inventario; }
-    public int getDinero() { return dinero; }
-    public int getVictorias() { return victorias; }
-    public int getDerrotas() { return derrotas; }
-    public int getCantidadPokemon() { return equipo.size(); }
+
 
     // Setters
     public void setNombre(String nombre) { this.nombre = nombre; }
@@ -170,9 +167,6 @@ public class Entrenador {
 
     // Dinero y estadísticas
     public void ganarDinero(int cantidad) { dinero += cantidad; }
-    public void gastarDinero(int cantidad) { dinero = Math.max(0, dinero - cantidad); }
-    public void incrementarVictorias() { victorias++; }
-    public void incrementarDerrotas() { derrotas++; }
 
     public void vaciarEquipo() {
         this.equipo.clear();

@@ -91,42 +91,67 @@ public class Crafteo {
 
     public boolean crearItem(int idReceta) {
         if (!puedeCraftear(idReceta)) {
+            System.out.println("No puedes craftear este ítem");
             return false;
         }
 
         Receta receta = buscarReceta(idReceta);
+        if (receta == null) {
+            System.out.println("Receta no encontrada");
+            return false;
+        }
 
         // Remover ingredientes
         for (Ingrediente ingrediente : receta.ingredientes) {
-            inventory.removerItem(ingrediente.nombre, ingrediente.cantidad);
+            boolean removido = inventory.removerItem(ingrediente.nombre, ingrediente.cantidad);
+            if (!removido) {
+                System.out.println("Error al remover ingrediente: " + ingrediente.nombre);
+                return false;
+            }
         }
 
-        // Crear el ítem resultante (USANDO LOS SETTERS CORRECTAMENTE)
+        // Crear el ítem resultante - VERSIÓN MEJORADA
+        Item itemCrafteado = null;
+
         switch(idReceta) {
             case 1: // Poké Ball normal
-                Pokeball pokeballNormal = new Pokeball();
-                pokeballNormal.setNombre("Poké Ball");
-                pokeballNormal.setTasaCaptura(1.0f);
-                inventory.agregarItem(pokeballNormal, 1);
+                itemCrafteado = new Pokeball("Poké Ball", 1.0f);
+                System.out.println("¡Has crafteado una Poké Ball!");
                 break;
 
             case 2: // Super Poké Ball
-                Pokeball superBall = new Pokeball();
-                superBall.setNombre("Super Poké Ball");
-                superBall.setTasaCaptura(1.5f); // Multiplicador 1.5
-                inventory.agregarItem(superBall, 1);
+                itemCrafteado = new Pokeball("Super Poké Ball", 1.5f);
+                System.out.println("¡Has crafteado una Super Poké Ball!");
                 break;
 
             case 3: // Poción pequeña
-                inventory.agregarItem(new Curacion("Poción", 20), 1);
+                itemCrafteado = new Curacion("Poción", 20);
+                System.out.println("¡Has crafteado una Poción!");
                 break;
 
             case 4: // Poción grande
-                inventory.agregarItem(new Curacion("Poción Grande", 50), 1);
+                itemCrafteado = new Curacion("Poción Grande", 50);
+                System.out.println("¡Has crafteado una Poción Grande!");
                 break;
+
+            default:
+                System.out.println("ID de receta desconocido: " + idReceta);
+                return false;
         }
 
-        return true;
+        // Agregar al inventario
+        if (itemCrafteado != null) {
+            boolean agregado = inventory.agregarItem(itemCrafteado, 1);
+            if (agregado) {
+                System.out.println("Ítem agregado al inventario: " + itemCrafteado.getNombre());
+                return true;
+            } else {
+                System.out.println("No hay espacio en el inventario");
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private Receta buscarReceta(int id) {

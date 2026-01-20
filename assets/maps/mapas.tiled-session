@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "C:/Users/anoth/OneDrive/Documentos/Programacion/Java/Pokemon/assets/tilesets/Tileset/Tileset.tsx",
+    "activeFile": "mapa_fondo.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -14,9 +14,69 @@
         "#Tileset": {
             "scaleInDock": 0.75
         },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Basic Grass Biom things 1.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Basic Plants.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Basic_Furniture.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Emoji_Spritesheet_Free.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Fences.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Grass.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Grass16.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Hills.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Interiors_free_16x16.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Paths.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Room_Builder_free_16x16.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/TX Plant with Shadow.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/TX Props with Shadow.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/TX Tileset Grass.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Tilled Dirt.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Water.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/Wooden House.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/atlas_16x.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset/spr_tileset_sunnysideworld_16px.tsx": {
+            "scaleInDock": 1
+        },
         "C:/Users/anoth/OneDrive/Documentos/Programacion/Java/Pokemon/assets/tilesets/Tileset/Tileset.tsx": {
             "scaleInDock": 1,
             "scaleInEditor": 1.5
+        },
+        "Grass16.tsx": {
+            "scaleInDock": 1
         },
         "mapa.tmx": {
             "expandedGroupLayers": [
@@ -45,50 +105,78 @@
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
+        "mapa_arceus.tmx": {
+            "scale": 1.1993749999999999,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 479.833246482543,
+                "y": 319.74986972381447
+            }
+        },
         "mapa_centro.tmx": {
             "scale": 1.5061458333333333,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 240.01659865827514,
-                "y": 160.0110657721834
+                "x": 479.7012241510477,
+                "y": 319.69015837886434
             }
+        },
+        "mapa_centro.tmx#Water": {
+            "scaleInDock": 1
         },
         "mapa_este.tmx": {
             "scale": 1,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 220.5,
-                "y": 160
+                "x": 479.5,
+                "y": 319.5
+            }
+        },
+        "mapa_fondo.tmx": {
+            "scale": 1.864375,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 240.0268186389541,
+                "y": 190.14415018437813
             }
         },
         "mapa_norte.tmx": {
             "scale": 1,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 235.5,
-                "y": 158
+                "x": 479.5,
+                "y": 319.5
             }
         },
         "mapa_oeste.tmx": {
             "scale": 1,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 210.5,
-                "y": 185
+                "x": 479.5,
+                "y": 319.5
             }
         },
         "mapa_sur.tmx": {
             "scale": 1.5061458333333333,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 240.01659865827514,
-                "y": 160.0110657721834
+                "x": 479.70122415104777,
+                "y": 319.69015837886434
             }
         },
         "mapa_sur.tmx#Tileset": {
             "scaleInDock": 1
+        },
+        "mapa_tienda.tmx": {
+            "scale": 2.3987499999999997,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 239.9166232412715,
+                "y": 159.87493486190724
+            }
         }
     },
+    "last.externalTilesetPath": "C:/Users/agonz/Documents/Poo/pokemon-game-main/pokemon-game-main/assets/tilesets/Tileset",
     "last.imagePath": "C:/Users/anoth/OneDrive/Documentos/Programacion/Java/Pokemon/assets/tilesets/Tileset",
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
@@ -96,18 +184,23 @@
     "openFiles": [
         "mapa_sur.tmx",
         "mapa_norte.tmx",
-        "mapa_centro.tmx",
-        "C:/Users/anoth/OneDrive/Documentos/Programacion/Java/Pokemon/assets/tilesets/Tileset/Tileset.tsx",
         "mapa_este.tmx",
-        "mapa_oeste.tmx"
+        "mapa_oeste.tmx",
+        "mapa_tienda.tmx",
+        "mapa_arceus.tmx",
+        "mapa_fondo.tmx",
+        "mapa_centro.tmx"
     ],
     "project": "mapas.tiled-project",
     "recentFiles": [
         "mapa_sur.tmx",
         "mapa_norte.tmx",
-        "mapa_centro.tmx",
-        "mapa_oeste.tmx",
         "mapa_este.tmx",
+        "mapa_oeste.tmx",
+        "mapa_tienda.tmx",
+        "mapa_arceus.tmx",
+        "mapa_centro.tmx",
+        "mapa_fondo.tmx",
         "C:/Users/anoth/OneDrive/Documentos/Programacion/Java/Pokemon/assets/tilesets/Tileset/Tileset.tsx",
         "mapa.tmx",
         "mapa2.tmx"

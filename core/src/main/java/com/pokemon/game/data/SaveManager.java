@@ -39,7 +39,7 @@ public class SaveManager {
             // Crear directorio saves si no existe
             FileHandle savesDir = getSavesDirectory();
             if (!savesDir.exists()) {
-                savesDir.mkdirs(); // mkdirs() no retorna boolean en libGDX
+                savesDir.mkdirs();
 
                 // Verificar si se creó correctamente
                 if (!savesDir.exists()) {
@@ -146,43 +146,6 @@ public class SaveManager {
         return file;
     }
 
-    // Método para listar todos los archivos de guardado (útil para múltiples slots)
-    public FileHandle[] listarPartidas() {
-        FileHandle savesDir = getSavesDirectory();
-        if (savesDir.exists() && savesDir.isDirectory()) {
-            return savesDir.list(".json");
-        }
-        return new FileHandle[0];
-    }
-
-    // Método para guardar en slot específico
-    public boolean guardarPartidaEnSlot(SaveData datos, int slot) {
-        String slotFile = SAVE_DIR + "partida_" + slot + ".json";
-        return guardarPartidaEnArchivo(datos, slotFile);
-    }
-
-    // Método para cargar desde slot específico
-    public SaveData cargarPartidaDeSlot(int slot) {
-        String slotFile = SAVE_DIR + "partida_" + slot + ".json";
-        String basePath = System.getProperty("user.dir");
-        FileHandle archivo = Gdx.files.absolute(basePath + "/" + slotFile);
-
-        if (!archivo.exists()) {
-            System.out.println("ℹ️ No existe partida en el slot " + slot);
-            return null;
-        }
-
-        try {
-            String jsonString = archivo.readString();
-            SaveData datos = json.fromJson(SaveData.class, jsonString);
-            System.out.println("✅ Partida cargada del slot " + slot);
-            return datos;
-        } catch (Exception e) {
-            System.err.println("❌ Error cargando partida del slot " + slot + ": " + e.getMessage());
-            return null;
-        }
-    }
-
     // Método privado para guardar en un archivo específico
     private boolean guardarPartidaEnArchivo(SaveData datos, String filePath) {
         try {
@@ -212,30 +175,6 @@ public class SaveManager {
         }
     }
 
-    // Método para obtener información del sistema de archivos (útil para debug)
-    public void mostrarInfoSistemaArchivos() {
-        System.out.println("\n=== INFORMACIÓN DEL SISTEMA DE ARCHIVOS ===");
-        System.out.println("Directorio de trabajo: " + System.getProperty("user.dir"));
-        System.out.println("Sistema operativo: " + System.getProperty("os.name"));
-
-        FileHandle savesDir = getSavesDirectory();
-        System.out.println("Directorio de saves existe: " + savesDir.exists());
-        System.out.println("Directorio de saves es directorio: " + (savesDir.exists() && savesDir.isDirectory()));
-
-        FileHandle saveFile = getSaveFile();
-        System.out.println("Archivo de guardado existe: " + saveFile.exists());
-
-        // Listar archivos en el directorio de saves
-        if (savesDir.exists() && savesDir.isDirectory()) {
-            FileHandle[] archivos = savesDir.list();
-            System.out.println("Archivos en saves/: " + archivos.length);
-            for (FileHandle archivo : archivos) {
-                System.out.println("  - " + archivo.name() + " (" + archivo.length() + " bytes)");
-            }
-        }
-        System.out.println("========================================\n");
-    }
-
     // Serializador personalizado para SaveData
     private static class SaveDataSerializer implements Json.Serializer<SaveData> {
         @Override
@@ -243,31 +182,39 @@ public class SaveManager {
             json.writeObjectStart();
 
             // Escribir Pokédex
-            json.writeObjectStart("pokedex");
-            json.writeValue("registros", saveData.getPokedex().getRegistros());
-            json.writeObjectEnd();
+            if (saveData.getPokedex() != null) {
+                json.writeObjectStart("pokedex");
+                json.writeValue("registros", saveData.getPokedex().getRegistros());
+                json.writeObjectEnd();
+            }
 
             // Escribir equipo
             json.writeArrayStart("equipo");
-            for (SaveData.PokemonSimple pokemon : saveData.getEquipo()) {
-                json.writeObjectStart();
-                json.writeValue("especie", pokemon.getEspecie());
-                json.writeValue("apodo", pokemon.getApodo());
-                json.writeValue("nivel", pokemon.getNivel());
-                json.writeValue("psActual", pokemon.getPsActual());
-                json.writeValue("psMaximos", pokemon.getPsMaximos());
-                json.writeValue("experiencia", pokemon.getExperiencia());
-                json.writeObjectEnd();
+            if (saveData.getEquipo() != null) {
+                for (SaveData.PokemonSimple pokemon : saveData.getEquipo()) {
+                    json.writeObjectStart();
+                    json.writeValue("especie", pokemon.getEspecie());
+                    json.writeValue("apodo", pokemon.getApodo());
+                    json.writeValue("nivel", pokemon.getNivel());
+                    json.writeValue("psActual", pokemon.getPsActual());
+                    json.writeValue("psMaximos", pokemon.getPsMaximos());
+                    json.writeValue("experiencia", pokemon.getExperiencia());
+                    json.writeObjectEnd();
+                }
             }
             json.writeArrayEnd();
 
-            // Escribir inventario
+            // Escribir inventario - VERIFICAR NULOS
             json.writeArrayStart("inventario");
-            for (SaveData.ItemSlot item : saveData.getInventario()) {
-                json.writeObjectStart();
-                json.writeValue("nombreItem", item.getNombreItem());
-                json.writeValue("cantidad", item.getCantidad());
-                json.writeObjectEnd();
+            if (saveData.getInventario() != null) {
+                for (SaveData.ItemSlot item : saveData.getInventario()) {
+                    if (item != null && item.getNombreItem() != null) {
+                        json.writeObjectStart();
+                        json.writeValue("nombreItem", item.getNombreItem());
+                        json.writeValue("cantidad", item.getCantidad());
+                        json.writeObjectEnd();
+                    }
+                }
             }
             json.writeArrayEnd();
 
@@ -278,45 +225,66 @@ public class SaveManager {
         public SaveData read(Json json, JsonValue jsonData, Class type) {
             SaveData saveData = new SaveData();
 
-            // LEER POKÉDEX
-            if (jsonData.has("pokedex")) {
-                JsonValue registrosData = jsonData.get("pokedex").get("registros");
-                PokedexManager pm = new PokedexManager();
+            try {
+                // LEER POKÉDEX
+                if (jsonData.has("pokedex")) {
+                    JsonValue pokedexData = jsonData.get("pokedex");
+                    if (pokedexData.has("registros")) {
+                        JsonValue registrosData = pokedexData.get("registros");
+                        PokedexManager pm = new PokedexManager();
 
-                HashMap<String, PokedexEntry> registros = json.readValue(HashMap.class, PokedexEntry.class, registrosData);
+                        HashMap<String, PokedexEntry> registros =
+                            json.readValue(HashMap.class, PokedexEntry.class, registrosData);
 
-                if (registros != null) {
-                    pm.setRegistros(registros);
-                    saveData.setPokedex(pm);
+                        if (registros != null) {
+                            pm.setRegistros(registros);
+                            saveData.setPokedex(pm);
+                        }
+                    }
                 }
-            }
 
-            // Leer equipo
-            if (jsonData.has("equipo")) {
-                JsonValue equipoData = jsonData.get("equipo");
-                for (JsonValue pokemonData = equipoData.child; pokemonData != null; pokemonData = pokemonData.next) {
-                    SaveData.PokemonSimple pokemon = new SaveData.PokemonSimple(
-                        pokemonData.getString("especie"),
-                        pokemonData.getString("apodo"),
-                        pokemonData.getInt("nivel"),
-                        pokemonData.getInt("psActual"),
-                        pokemonData.getInt("psMaximos"),
-                        pokemonData.getInt("experiencia")
-                    );
-                    saveData.getEquipo().add(pokemon);
+                // Leer equipo
+                if (jsonData.has("equipo")) {
+                    JsonValue equipoData = jsonData.get("equipo");
+                    for (JsonValue pokemonData = equipoData.child; pokemonData != null; pokemonData = pokemonData.next) {
+                        try {
+                            SaveData.PokemonSimple pokemon = new SaveData.PokemonSimple(
+                                pokemonData.getString("especie"),
+                                pokemonData.getString("apodo", ""), // Valor por defecto
+                                pokemonData.getInt("nivel", 1),
+                                pokemonData.getInt("psActual", 10),
+                                pokemonData.getInt("psMaximos", 10),
+                                pokemonData.getInt("experiencia", 0)
+                            );
+                            saveData.getEquipo().add(pokemon);
+                        } catch (Exception e) {
+                            System.err.println("Error leyendo Pokémon: " + e.getMessage());
+                        }
+                    }
                 }
-            }
 
-            // Leer inventario
-            if (jsonData.has("inventario")) {
-                JsonValue inventarioData = jsonData.get("inventario");
-                for (JsonValue itemData = inventarioData.child; itemData != null; itemData = itemData.next) {
-                    SaveData.ItemSlot item = new SaveData.ItemSlot(
-                        itemData.getString("nombreItem"),
-                        itemData.getInt("cantidad")
-                    );
-                    saveData.getInventario().add(item);
+                // Leer inventario - CON MANEJO DE ERRORES
+                if (jsonData.has("inventario")) {
+                    JsonValue inventarioData = jsonData.get("inventario");
+                    for (JsonValue itemData = inventarioData.child; itemData != null; itemData = itemData.next) {
+                        try {
+                            String nombreItem = itemData.getString("nombreItem", "Ítem Desconocido");
+                            int cantidad = itemData.getInt("cantidad", 1);
+
+                            // Validar datos
+                            if (nombreItem != null && !nombreItem.trim().isEmpty() && cantidad > 0) {
+                                SaveData.ItemSlot item = new SaveData.ItemSlot(nombreItem, cantidad);
+                                saveData.getInventario().add(item);
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Error leyendo ítem: " + e.getMessage());
+                        }
+                    }
                 }
+
+            } catch (Exception e) {
+                System.err.println("Error general al leer datos guardados: " + e.getMessage());
+                e.printStackTrace();
             }
 
             return saveData;

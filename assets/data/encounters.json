@@ -1,28 +1,57 @@
 {
   "encounters": {
+    "mapa_arceus": [
+      {"species": "Arceus", "probability": 10, "minLevel": 40, "maxLevel": 45}
+    ],
     "mapa_centro": [
       {"species": "Pikachu", "probability": 10, "minLevel": 2, "maxLevel": 4},
       {"species": "Snivy", "probability": 15, "minLevel": 5, "maxLevel": 8},
       {"species": "Farfetch'd", "probability": 15, "minLevel": 4, "maxLevel": 6},
       {"species": "Ralts", "probability": 10, "minLevel": 5, "maxLevel": 7},
-      {"species": "Zorua", "probability": 10, "minLevel": 6, "maxLevel": 9}
+      {"species": "Zorua", "probability": 10, "minLevel": 6, "maxLevel": 9},
+      {"species": "Charmander", "probability": 8, "minLevel": 3, "maxLevel": 5},
+      {"species": "Jigglypuff", "probability": 7, "minLevel": 4, "maxLevel": 6},
+      {"species": "Wooper", "probability": 8, "minLevel": 3, "maxLevel": 5},
+      {"species": "Riolu", "probability": 7, "minLevel": 5, "maxLevel": 7}
     ],
     "mapa_norte": [
       {"species": "Pikachu", "probability": 10, "minLevel": 4, "maxLevel": 6},
       {"species": "Machop", "probability": 10, "minLevel": 10, "maxLevel": 14},
-      {"species": "Onix", "probability": 10, "minLevel": 12, "maxLevel": 16}
+      {"species": "Onix", "probability": 10, "minLevel": 12, "maxLevel": 16},
+      {"species": "Machoke", "probability": 8, "minLevel": 14, "maxLevel": 18},
+      {"species": "Kadabra", "probability": 7, "minLevel": 15, "maxLevel": 19},
+      {"species": "Kirlia", "probability": 8, "minLevel": 13, "maxLevel": 17},
+      {"species": "Charmeleon", "probability": 7, "minLevel": 16, "maxLevel": 20}
     ],
     "mapa_oeste": [
       {"species": "Onix", "probability": 15, "minLevel": 10, "maxLevel": 12},
       {"species": "Meowth", "probability": 15, "minLevel": 8, "maxLevel": 12},
       {"species": "Abra", "probability": 15, "minLevel": 7, "maxLevel": 10},
-      {"species": "Ditto", "probability": 20, "minLevel": 10, "maxLevel": 15}
+      {"species": "Ditto", "probability": 20, "minLevel": 10, "maxLevel": 15},
+      {"species": "Persian", "probability": 8, "minLevel": 14, "maxLevel": 18},
+      {"species": "Wigglytuff", "probability": 7, "minLevel": 12, "maxLevel": 16},
+      {"species": "Quagsire", "probability": 10, "minLevel": 11, "maxLevel": 15}
     ],
     "mapa_este": [
       {"species": "Magikarp", "probability": 50, "minLevel": 5, "maxLevel": 15},
       {"species": "Sandile", "probability": 10, "minLevel": 10, "maxLevel": 13},
       {"species": "Drilbur", "probability": 10, "minLevel": 11, "maxLevel": 14},
-      {"species": "Krokorok", "probability": 10, "minLevel": 15, "maxLevel": 18}
+      {"species": "Krokorok", "probability": 10, "minLevel": 15, "maxLevel": 18},
+      {"species": "Gyarados", "probability": 5, "minLevel": 18, "maxLevel": 22},
+      {"species": "Excadrill", "probability": 5, "minLevel": 20, "maxLevel": 24},
+      {"species": "Krookodile", "probability": 5, "minLevel": 22, "maxLevel": 26}
+    ],
+    "mapa_sur": [
+      {"species": "Charizard", "probability": 10, "minLevel": 30, "maxLevel": 35},
+      {"species": "Alakazam", "probability": 10, "minLevel": 30, "maxLevel": 35},
+      {"species": "Gardevoir", "probability": 10, "minLevel": 30, "maxLevel": 35},
+      {"species": "Machamp", "probability": 10, "minLevel": 30, "maxLevel": 35},
+      {"species": "Serperior", "probability": 10, "minLevel": 30, "maxLevel": 35},
+      {"species": "Vaporeon", "probability": 10, "minLevel": 28, "maxLevel": 32},
+      {"species": "Zoroark", "probability": 10, "minLevel": 28, "maxLevel": 32},
+      {"species": "Raichu", "probability": 10, "minLevel": 25, "maxLevel": 30},
+      {"species": "Lucario", "probability": 10, "minLevel": 32, "maxLevel": 36},
+      {"species": "Servine", "probability": 5, "minLevel": 22, "maxLevel": 26}
     ]
   }
 }

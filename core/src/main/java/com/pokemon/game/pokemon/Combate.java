@@ -1,9 +1,12 @@
 package com.pokemon.game.pokemon;
 
 import com.pokemon.game.item.Pokeball;
+import com.pokemon.game.item.Recurso;
+import com.pokemon.game.pokedex.PokedexEntry;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class Combate {
     private Pokemon pokemonJugador;
@@ -164,15 +167,65 @@ public class Combate {
             return false;
         }
 
-        // 2. Calcular éxito
+        // 2. Calcular éxito (fórmula especial para legendarios)
         double porcentajePs = (double)pokemonRival.getPsActual() / pokemonRival.getPsMaximos();
-        double probabilidad = (ball.getTasaCaptura() * 0.25) / (porcentajePs + 0.1);
+        double probabilidad;
+
+        // Verificar si es Pokémon legendario
+        boolean esLegendario = esPokemonLegendario(pokemonRival.getEspecie().getNombre());
+
+        if (esLegendario) {
+            // FÓRMULA MÁS DIFÍCIL PARA LEGENDARIOS
+            // Base más baja (0.1 vs 0.25) y penalización mayor por PS altos
+            probabilidad = (ball.getTasaCaptura() * 0.1) / (porcentajePs * 2.0 + 0.05);
+
+            // Penalización adicional si no está debilitado
+            if (porcentajePs > 0.5) {
+                probabilidad *= 0.5; // 50% menos de probabilidad
+            }
+
+            // Asegurar límites razonables para legendarios
+            probabilidad = Math.max(0.01, Math.min(0.5, probabilidad));
+
+        } else {
+            // Fórmula normal para Pokémon comunes
+            probabilidad = (ball.getTasaCaptura() * 0.25) / (porcentajePs + 0.1);
+        }
+
         boolean exito = Math.random() < probabilidad;
 
         if (exito) {
             registrarEvento("¡Atrapaste a " + pokemonRival.getNombre() + "!");
 
-            // 3. Crear la instancia para el jugador y añadir al equipo
+            // 3. Si es legendario, mensaje especial
+            if (esLegendario) {
+                registrarEvento("¡¡¡HAS CAPTURADO UN POKÉMON LEGENDARIO!!!");
+                registrarEvento("¡Logro máximo completado!");
+
+                // AUTO-COMPLETAR INVESTIGACIÓN (Nivel 10 inmediato)
+                PokedexEntry entrada = entrenador.getPokedex().getEntrada(
+                    pokemonRival.getEspecie().getNombre()
+                );
+
+                if (entrada != null) {
+                    // Forzar nivel 10 de investigación
+                    int intentosNecesarios = 10 - entrada.getNivelInvestigacion();
+                    for (int i = 0; i < intentosNecesarios; i++) {
+                        entrada.registrarVictoriaCombate();
+                    }
+                    registrarEvento(pokemonRival.getEspecie().getNombre() +
+                        " ha sido registrado como COMPLETAMENTE INVESTIGADO (Nivel 10)");
+                }
+
+                // Otorgar recompensas especiales
+                entrenador.ganarDinero(10000); // 10,000 de dinero
+                registrarEvento("¡Has obtenido $10,000 como recompensa!");
+
+                // Finalizar el objetivo central de la simulación
+                registrarEvento("¡OBJETIVO PRINCIPAL COMPLETADO!");
+            }
+
+            // 4. Crear la instancia para el jugador y añadir al equipo
             PokemonJugador nuevo;
 
             if (pokemonRival instanceof PokemonSalvaje) {
@@ -212,13 +265,13 @@ public class Combate {
                 }
             }
 
-            // 4. Añadir al equipo del entrenador
+            // 5. Añadir al equipo del entrenador
             boolean añadido = entrenador.agregarPokemon(nuevo);
             if (!añadido) {
                 registrarEvento("¡Pero el equipo estaba lleno!");
             }
 
-            // 5. Registrar captura en la Pokédex
+            // 6. Registrar captura en la Pokédex
             entrenador.registrarCapturaPokemon(
                 pokemonRival.getEspecie().getNombre(),
                 "En combate"
@@ -227,11 +280,36 @@ public class Combate {
             combateTerminado = true;
             motivoFin = "captura";
             return true;
+
         } else {
             registrarEvento(pokemonRival.getNombre() + " se liberó...");
+
+            // Mensaje especial para legendarios fallidos
+            if (esLegendario) {
+                registrarEvento("¡El poder legendario es demasiado fuerte!");
+            }
+
             turnoJugador = false; // El turno pasa al rival por fallar
             return false;
         }
+    }
+
+    // Método auxiliar para detectar Pokémon legendarios
+    private boolean esPokemonLegendario(String nombrePokemon) {
+        // Lista de Pokémon legendarios
+        String[] legendarios = {
+            "Arceus", "Mewtwo", "Rayquaza", "Groudon", "Kyogre",
+            "Dialga", "Palkia", "Giratina", "Lugia", "Ho-Oh",
+            "Zapdos", "Moltres", "Articuno", "Mew", "Celebi",
+            "Jirachi", "Deoxys", "Darkrai", "Shaymin", "Arceus"
+        };
+
+        for (String legendario : legendarios) {
+            if (nombrePokemon.equalsIgnoreCase(legendario)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public ResultadoTurno cambiarPokemon(Pokemon nuevoPokemon) {
@@ -288,6 +366,64 @@ public class Combate {
     public void registrarDerrotaCompleta() {
         combateTerminado = true;
         motivoFin = "derrota";
+    }
+
+    public void otorgarRecompensasVictoria(Entrenador entrenador) {
+        if (motivoFin == null || !motivoFin.equals("victoria")) {
+            return;
+        }
+
+        // Calcular recompensas
+        SistemaRecompensas.RecompensaCombate recompensa =
+            SistemaRecompensas.calcularRecompensaVictoria(pokemonJugador, pokemonRival);
+
+        // 1. Dar experiencia al Pokémon que luchó
+        if (pokemonJugador instanceof PokemonJugador) {
+            PokemonJugador pj = (PokemonJugador) pokemonJugador;
+            pj.ganarExperiencia(recompensa.experiencia);
+            registrarEvento(pj.getApodo() + " ganó " + recompensa.experiencia + " puntos de experiencia!");
+        }
+
+        // 2. Dar recurso
+        if (recompensa.recursoGanado != null && recompensa.cantidadRecurso > 0) {
+            Recurso recurso = new Recurso(recompensa.recursoGanado, recompensa.recursoGanado);
+            boolean agregado = entrenador.getInventario().agregarItem(recurso, recompensa.cantidadRecurso);
+            if (agregado) {
+                registrarEvento("¡Obtuviste " + recompensa.cantidadRecurso + "x " + recompensa.recursoGanado + "!");
+            }
+        }
+
+        // 3. Registrar victoria en Pokédex
+        entrenador.registrarVictoriaContraPokemon(pokemonRival.getEspecie().getNombre());
+    }
+
+    public void aplicarPenalizacionDerrota(Entrenador entrenador) {
+        // 30% de chance de perder un recurso aleatorio
+        Random rand = new Random();
+        if (rand.nextDouble() < 0.3) {
+            String[] recursosDisponibles = {"Planta", "Guijarro", "Baya", "Metal"};
+            String recursoPerdido = recursosDisponibles[rand.nextInt(recursosDisponibles.length)];
+
+            if (entrenador.getInventario().removerItem(recursoPerdido, 1)) {
+                registrarEvento("Perdiste 1 " + recursoPerdido + " del inventario...");
+            }
+        }
+
+        // Todos los Pokémon del equipo quedan debilitados
+        for (PokemonJugador p : entrenador.getEquipo()) {
+            if (!p.estaDebilitado()) {
+                p.recibirDaño(p.getPsActual());
+            }
+        }
+        registrarEvento("Todos tus Pokémon quedaron debilitados...");
+    }
+
+    public void registrarDerrotaCompleta(Entrenador entrenador) {
+        combateTerminado = true;
+        motivoFin = "derrota";
+        registrarEvento("¡Todos tus Pokémon fueron derrotados!");
+
+        aplicarPenalizacionDerrota(entrenador);
     }
 
     // Getters

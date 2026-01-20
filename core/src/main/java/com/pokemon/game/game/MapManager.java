@@ -37,9 +37,15 @@ public class MapManager {
                 "maps/mapa_sur.tmx",
                 "maps/mapa_este.tmx",
                 "maps/mapa_oeste.tmx"));
+        MAPAS.put("maps/mapa_arceus.tmx",
+            new MapInfo("maps/mapa_arceus.tmx",
+                null,
+                "maps/mapa_norte.tmx",
+                null,
+                null));
         MAPAS.put("maps/mapa_norte.tmx",
             new MapInfo("maps/mapa_norte.tmx",
-                null,
+                "maps/mapa_arceus.tmx",
                 "maps/mapa_centro.tmx",
                 null,
                 null));
@@ -60,6 +66,12 @@ public class MapManager {
                 null,
                 null,
                 "maps/mapa_centro.tmx",
+                null));
+        MAPAS.put("maps/mapa_tienda.tmx",
+            new MapInfo("maps/mapa_tienda.tmx",
+                null,
+                "maps/mapa_centro.tmx",
+                null,
                 null));
     }
 

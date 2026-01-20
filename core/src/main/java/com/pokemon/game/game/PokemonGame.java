@@ -19,8 +19,15 @@ public class PokemonGame extends Game {
 
     @Override
     public void setScreen(Screen screen) {
-        // Elimina el bloque oldScreen.dispose()
+        Screen oldScreen = getScreen();
+
+        // Solo cambiar la pantalla
         super.setScreen(screen);
+
+        // Opcional: si quieres disponer la pantalla anterior solo en ciertos casos
+        if (oldScreen != null && oldScreen != screen && !(oldScreen instanceof GameScreen)) {
+            oldScreen.dispose();
+        }
     }
 
     @Override

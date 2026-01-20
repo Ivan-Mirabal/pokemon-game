@@ -1,31 +1,29 @@
 {
 "pokedex": {
 	"registros": {
-		"Zorua": {
+		"Pikachu": {
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
-			"especie": "Zorua",
+			"especie": "Pikachu",
 			"visto": true,
-			"vecesVisto": 2,
+			"vecesVisto": 1,
 			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "17/01/2026 23:42"
+			"primerAvistamientoFecha": "20/01/2026 11:44"
 		},
-		"Snivy": {
+		"Jigglypuff": {
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
-			"especie": "Snivy",
+			"especie": "Jigglypuff",
 			"visto": true,
-			"nivelInvestigacion": 4,
-			"vecesVisto": 3,
+			"vecesVisto": 1,
 			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "18/01/2026 00:03"
+			"primerAvistamientoFecha": "20/01/2026 13:41"
 		},
 		"Farfetch'd": {
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
 			"especie": "Farfetch'd",
 			"visto": true,
-			"nivelInvestigacion": 6,
-			"vecesVisto": 4,
+			"vecesVisto": 1,
 			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "18/01/2026 10:41"
+			"primerAvistamientoFecha": "20/01/2026 12:07"
 		}
 	}
 },
@@ -34,7 +32,7 @@
 		"especie": "Pikachu",
 		"apodo": "Pika",
 		"nivel": 5,
-		"psActual": 0,
+		"psActual": 5,
 		"psMaximos": 18,
 		"experiencia": 0
 	},
@@ -42,9 +40,9 @@
 		"especie": "Charizard",
 		"apodo": "Jorge",
 		"nivel": 8,
-		"psActual": 0,
+		"psActual": 30,
 		"psMaximos": 30,
-		"experiencia": 210
+		"experiencia": 0
 	}
 ],
 "inventario": [
@@ -66,7 +64,7 @@
 	},
 	{
 		"nombreItem": "Baya",
-		"cantidad": 3
+		"cantidad": 4
 	},
 	{
 		"nombreItem": "Metal",

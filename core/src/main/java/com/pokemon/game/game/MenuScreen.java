@@ -233,16 +233,18 @@ public class MenuScreen implements Screen {
             SaveData datos = SaveManager.getInstance().cargarPartida();
 
             if (datos != null) {
-                // 1. Creamos la pantalla
-                GameScreen gameScreen = new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16);
-
-                // 2. IMPORTANTE: Cambiamos la pantalla PRIMERO
-                game.setScreen(gameScreen);
-
-                // 3. Ahora que la pantalla está activa, inyectamos los datos
-                gameScreen.cargarDatosJugador(datos);
-
-                System.out.println("✅ Datos inyectados tras cambio de pantalla");
+                // Si ya hay una GameScreen activa, reusarla
+                if (game.getScreen() instanceof GameScreen) {
+                    GameScreen existingScreen = (GameScreen) game.getScreen();
+                    existingScreen.cargarDatosJugador(datos);
+                    game.setScreen(existingScreen);
+                } else {
+                    // Crear nueva solo si no existe
+                    GameScreen gameScreen = new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16);
+                    game.setScreen(gameScreen);
+                    gameScreen.cargarDatosJugador(datos);
+                }
+                System.out.println("✅ Datos cargados exitosamente");
             }
         } catch (Exception e) {
             e.printStackTrace();
