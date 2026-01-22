@@ -145,6 +145,24 @@ public class Pokemon {
         }
     }
 
+    public void revivir(int porcentaje) {
+        if (!this.debilitado) return; // Solo funciona si está debilitado
+
+        this.debilitado = false;
+        int psRecuperados = (int) (this.psMaximos * (porcentaje / 100.0f));
+
+        // Asegurar que al menos recupere 1 PS
+        if (psRecuperados < 1) psRecuperados = 1;
+
+        this.psActual = psRecuperados;
+
+        // Verificar límites
+        if (this.psActual > this.psMaximos) {
+            this.psActual = this.psMaximos;
+        }
+        System.out.println(apodo + " ha revivido con " + psActual + " PS.");
+    }
+
     public void curarCompletamente() {
         psActual = psMaximos;
         debilitado = false;

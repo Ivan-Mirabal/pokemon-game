@@ -211,7 +211,7 @@ public class MenuScreen implements Screen {
             switch(selectedItem) {
                 case 0: // NUEVA PARTIDA
                     System.out.println("Iniciando nueva partida...");
-                    game.setScreen(new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16));
+                    game.setScreen(new StarterSelectionScreen(game));
                     break;
 
                 case 1: // CARGAR PARTIDA
@@ -244,7 +244,7 @@ public class MenuScreen implements Screen {
                     game.setScreen(gameScreen);
                     gameScreen.cargarDatosJugador(datos);
                 }
-                System.out.println("✅ Datos cargados exitosamente");
+                System.out.println("Datos cargados exitosamente");
             }
         } catch (Exception e) {
             e.printStackTrace();

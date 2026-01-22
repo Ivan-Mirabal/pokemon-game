@@ -94,8 +94,8 @@ public class SaveData {
 
     // Slot de ítem del inventario
     public static class ItemSlot {
-        private String nombreItem;   // "Pokeball", "Poción"
-        private int cantidad;        // 5
+        private String nombreItem;   // "Pokeball", "Poción", "Revivir"
+        private int cantidad;
 
         // Constructor vacío para JSON
         public ItemSlot() {}

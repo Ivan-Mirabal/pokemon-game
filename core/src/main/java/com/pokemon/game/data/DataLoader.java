@@ -39,7 +39,6 @@ public class DataLoader {
         loadSpecies();
         loadMoves();
         loadEncounters();
-        System.out.println("Datos cargados.");
     }
 
     private void loadSpecies() {
@@ -76,7 +75,6 @@ public class DataLoader {
                 moveData.put(data.name.toUpperCase(), data);
             }
 
-            System.out.println("Movimientos cargados: " + moveData.size());
         } catch (Exception e) {
             System.err.println("Error cargando moves.json: " + e.getMessage());
         }
@@ -123,8 +121,6 @@ public class DataLoader {
                 zonasCargadas++;
             }
 
-            System.out.println("Encuentros: " + zonasCargadas + " zonas, " + encuentrosTotales + " Pokémon");
-
         } catch (Exception e) {
             System.err.println("ERROR cargando encounters.json: " + e.getMessage());
             cargarEncuentrosPorDefecto();
@@ -155,16 +151,6 @@ public class DataLoader {
         return data;
     }
 
-    private void loadSpritePaths() {
-        // Pre-cargar rutas de sprites basadas en nombres de especies
-        String[] especies = {"Pikachu", "Charizard", "Charmander", "Lucario", "Gardevoir", "Gyarados", "Vaporeon"};
-
-        for (String especie : especies) {
-            String lowerName = especie.toLowerCase();
-            spritePaths.put(especie.toUpperCase(), "assets/sprites/pokemon/" + lowerName + "/");
-        }
-    }
-
     // ===== GETTERS PÚBLICOS =====
 
     public SpeciesData getSpeciesData(String name) {
@@ -179,13 +165,6 @@ public class DataLoader {
         String key = zone.toLowerCase();
         List<EncounterData> result = encounterData.get(key);
 
-        if (result == null) {
-            System.out.println("[DataLoader] No se encontró zona: '" + key + "'");
-            System.out.println("[DataLoader] Zonas disponibles: " + encounterData.keySet());
-        } else {
-            System.out.println("[DataLoader] Zona encontrada: '" + key + "' con " + result.size() + " encuentros");
-        }
-
         return result;
     }
 
@@ -197,14 +176,6 @@ public class DataLoader {
         List<String> names = new ArrayList<>(speciesData.keySet());
         Collections.sort(names);
         return names;
-    }
-
-    public String getSpritePath(String speciesName, String spriteType) {
-        String basePath = spritePaths.get(speciesName.toUpperCase());
-        if (basePath == null) {
-            return "assets/sprites/pokemon/placeholder/";
-        }
-        return basePath + spriteType + ".png";
     }
 
     // ===== CLASES INTERNAS PARA PARSING JSON =====
@@ -269,14 +240,4 @@ public class DataLoader {
             return species + " (" + minLevel + "-" + maxLevel + ") " + probability + "%";
         }
     }
-
-    public void debugAllZones() {
-        System.out.println("=== DEBUG: TODAS LAS ZONAS CARGADAS ===");
-        for (Map.Entry<String, List<EncounterData>> entry : encounterData.entrySet()) {
-            System.out.println("Zona: '" + entry.getKey() + "' -> " + entry.getValue().size() + " encuentros");
-        }
-    }
-
-
-
 }

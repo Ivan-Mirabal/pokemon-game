@@ -11,6 +11,12 @@ public class PokedexManager {
         this.especiesCompletamenteInvestigadas = new ArrayList<>();
     }
 
+    public void registrarPokemonInicial(String especie) {
+        PokedexEntry entrada = obtenerEntrada(especie);
+        entrada.registrarInicial();
+        System.out.println("[Pokédex] Inicial registrado: " + especie + " (Inv: 0/10)");
+    }
+
     // Registrar avistamiento (al iniciar combate)
     public void registrarAvistamiento(String especie, String ubicacion) {
         PokedexEntry entrada = obtenerEntrada(especie);

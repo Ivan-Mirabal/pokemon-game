@@ -70,6 +70,14 @@ public class Crafteo {
         receta4.agregarIngrediente("Baya", 1);
         receta4.agregarIngrediente("Guijarro", 3);
         recetasDisponibles.add(receta4);
+
+        // Receta 5: Revivr
+        Receta receta5 = new Receta(5,"Revivir", "Revive al Pokemon y restaura la mitad de sus PS");
+        receta5.agregarIngrediente("Metal",3);
+        receta5.agregarIngrediente("Guijarro",3);
+        receta5.agregarIngrediente("Baya", 2);
+        receta5.agregarIngrediente("Planta",4);
+        recetasDisponibles.add(receta5);
     }
 
     public List<Receta> getRecetasDisponibles() {
@@ -134,6 +142,11 @@ public class Crafteo {
                 System.out.println("¡Has crafteado una Poción Grande!");
                 break;
 
+            case 5:
+                itemCrafteado = new Revivir("Revivir",50);
+                System.out.println("¡Has crafteado un Revivir");
+                break;
+
             default:
                 System.out.println("ID de receta desconocido: " + idReceta);
                 return false;
@@ -143,7 +156,6 @@ public class Crafteo {
         if (itemCrafteado != null) {
             boolean agregado = inventory.agregarItem(itemCrafteado, 1);
             if (agregado) {
-                System.out.println("Ítem agregado al inventario: " + itemCrafteado.getNombre());
                 return true;
             } else {
                 System.out.println("No hay espacio en el inventario");

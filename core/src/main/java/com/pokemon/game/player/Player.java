@@ -89,7 +89,7 @@ public class Player {
     private int pokedexPage = 0;                // Paginación
     public final int POKEDEX_ENTRIES_PER_PAGE = 6; // 10 por página
 
-    public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen) {
+    public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen, PokemonJugador pokemonInicial) {
         this.x = startX;
         this.y = startY;
         this.tileWidth = tileWidth;
@@ -124,28 +124,30 @@ public class Player {
         // INICIALIZAR INVENTARIO (AHORA 50 ÍTEMS TOTALES)
         this.inventario = new Inventario(50);
 
+        inventario.agregarItem(new Pokeball("Poké Ball", 1.0f), 5);
+        inventario.agregarItem(new Curacion("Poción", 20), 3);
+        inventario.agregarItem(new Revivir("Revivir", 50), 3); // <--- NUEVO ITEM
+        inventario.agregarItem(new Recurso("Planta", "Planta"), 5);
+        inventario.agregarItem(new Recurso("Guijarro", "Guijarro"), 8);
+        inventario.agregarItem(new Recurso("Baya", "Baya"), 3);
+        inventario.agregarItem(new Recurso("Metal", "Metal"), 5);
+
         this.entrenador = new Entrenador("Ash", inventario);
 
-        // Dar Pokémon inicial (ejemplo: Pikachu nivel 5)
-        PokemonJugador inicial = FabricaPokemon.crearPokemonJugador("Pikachu", 5, "Pika");
-        entrenador.agregarPokemon(inicial);
-        PokemonJugador charizard = FabricaPokemon.crearPokemonJugador("Charizard", 8, "Jorge");
-        entrenador.agregarPokemon(charizard);
+        // --- LÓGICA DEL INICIAL ---
+        if (pokemonInicial != null) {
+            // 1. Agregar al equipo
+            entrenador.agregarPokemon(pokemonInicial);
+
+            // 2. Registrar en Pokédex (Solo capturado, Inv: 0)
+            entrenador.getPokedex().registrarPokemonInicial(pokemonInicial.getNombre());
+
+            System.out.println("¡Comienzas tu aventura con " + pokemonInicial.getApodo() + "!");
+        }
 
         // INICIALIZAR ESTADO DEL MENÚ
         this.menuState = MenuState.NONE;
         this.menuSelection = 0;
-
-        // CORRECCIÓN: Usar nombres consistentes
-
-        inventario.agregarItem(new Pokeball("Poké Ball", 1.0f), 5);
-        inventario.agregarItem(new Curacion("Poción", 20), 3);
-        inventario.agregarItem(new Recurso("Planta", "Planta"), 5);
-        inventario.agregarItem(new Recurso("Guijarro", "Guijarro"), 8);
-        inventario.agregarItem(new Recurso("Baya", "Baya"), 3);
-
-        // AÑADIR METAL PARA PODER CRAFTEAR
-        inventario.agregarItem(new Recurso("Metal", "Metal"), 5);
 
         this.sistemaCrafteo = new Crafteo(inventario);
         this.seleccionCrafteo = 0;
@@ -460,7 +462,7 @@ public class Player {
                 break;
             case 1: // Pociones
                 for (Ranura slot : inv.getRanuras()) {
-                    if (slot.getItem() instanceof Curacion) {
+                    if (slot.getItem() instanceof Curacion || slot.getItem() instanceof Revivir) {
                         itemsColumna.add(slot);
                     }
                 }
@@ -483,11 +485,11 @@ public class Player {
         Item item = slot.getItem();
 
         // SOLO las Pociones cambian de estado
-        if (item instanceof Curacion) {
+        if (item instanceof Curacion || item instanceof Revivir) {
             selectedItemSlot = slot;
             selectedItemAction = ItemAction.USE_ON_POKEMON;
             setMenuState(MenuState.POKEMON_SELECT_FOR_ITEM);
-            pokemonTeamSelection = 0;
+            setPokemonTeamSelection(0);
         } else if (item instanceof Pokeball) {
             System.out.println("Las Poké Balls solo se pueden usar en combate.");
         } else {
@@ -502,42 +504,64 @@ public class Player {
         }
 
         Item item = selectedItemSlot.getItem();
-        if (!(item instanceof Curacion)) {
+        String nombreItem = item.getNombre();
+
+        if (item instanceof Revivir) {
+            Revivir revivir = (Revivir) item;
+
+            if (!pokemon.estaDebilitado()) {
+                System.out.println("¡" + pokemon.getApodo() + " no está debilitado!");
+                return false;
+            }
+
+            pokemon.revivir(revivir.getPorcentajeRecuperacion());
+
+            // Consumir item
+            boolean removido = inventario.removerItem(nombreItem, 1);
+            if (removido) {
+                selectedItemSlot = null; // Reset
+                selectedItemAction = ItemAction.NONE;
+                return true;
+            }
             return false;
+        } else if (item instanceof Curacion) {
+
+            // 1. Verificar si el Pokémon está debilitado
+            if (pokemon.estaDebilitado()) {
+                System.out.println(pokemon.getApodo() + " está debilitado.");
+                return false;
+            }
+
+            Curacion pocion = (Curacion) item;
+
+            // 2. Verificar si ya tiene toda la salud
+            if (pokemon.getPsActual() >= pokemon.getPsMaximos()) {
+                System.out.println(pokemon.getApodo() + " ya tiene toda la salud.");
+                return false;
+            }
+
+            // 3. Calcular curación
+            int psAntes = pokemon.getPsActual();
+            pokemon.curar(pocion.getHpRestaurado());
+            int curacionReal = pokemon.getPsActual() - psAntes;
+
+            // Llamamos a removerItem: esto descuenta 1 de la ranura Y 1 del cantidadTotal
+            boolean removido = inventario.removerItem(nombreItem, 1);
+
+            if (removido) {
+                System.out.println("¡Usaste " + nombreItem + " en " +
+                    pokemon.getApodo() + "! (+" + curacionReal + " PS)");
+            } else {
+                // Esto es por seguridad, por si acaso el ítem ya no estaba
+                return false;
+            }
+
+            // 5. Resetear selección
+            selectedItemSlot = null;
+            selectedItemAction = ItemAction.NONE;
+            return true;
         }
-
-        Curacion pocion = (Curacion) item;
-
-        // 1. Verificar si el Pokémon está debilitado
-        if (pokemon.estaDebilitado()) {
-            System.out.println(pokemon.getApodo() + " está debilitado.");
-            return false;
-        }
-
-        // 2. Verificar si ya tiene toda la salud
-        if (pokemon.getPsActual() >= pokemon.getPsMaximos()) {
-            System.out.println(pokemon.getApodo() + " ya tiene toda la salud.");
-            return false;
-        }
-
-        // 3. Calcular curación
-        int psAntes = pokemon.getPsActual();
-        pokemon.curar(pocion.getHpRestaurado());
-        int curacionReal = pokemon.getPsActual() - psAntes;
-
-        // 4. Consumir item
-        selectedItemSlot.decrementar(1);
-        if (selectedItemSlot.getCantidad() <= 0) {
-            inventario.removerItem(selectedItemSlot.getItem().getNombre(), 1);
-        }
-
-        System.out.println("¡Usaste " + item.getNombre() + " en " +
-            pokemon.getApodo() + "! (+" + curacionReal + " PS)");
-
-        // 5. Resetear
-        selectedItemSlot = null;
-        selectedItemAction = ItemAction.NONE;
-        return true; // Devolver true para indicar éxito
+        return false;
     }
 
     public void cancelarUsoItem() {
@@ -591,31 +615,6 @@ public class Player {
 
     public boolean intentarCraftear() {
         return sistemaCrafteo.crearItem(seleccionCrafteo + 1); // +1 porque IDs empiezan en 1
-    }
-
-    // Método para curar Pokémon seleccionado
-    public boolean curarPokemonSeleccionado() {
-        if (getEntrenador().getEquipo().isEmpty()) return false;
-
-        // ❌ ANTES: Usaba pokemonMenuSelection
-        // PokemonJugador pokemon = getEntrenador().getEquipo().get(pokemonMenuSelection);
-
-        // ✅ AHORA: Usa el método getPokemonSeleccionado() que ya corregiste
-        PokemonJugador pokemon = getPokemonSeleccionado();  // ¡Esto usa pokemonTeamSelection!
-
-        if (pokemon == null) return false;
-
-        // Verificar si tiene Pociones en inventario
-        Ranura pociones = getInventario().buscarItem("Poción");
-        if (pociones != null && pociones.getCantidad() > 0) {
-            pokemon.curar(20); // Poción cura 20 PS
-            pociones.usarCantidad(1);
-            System.out.println("Has usado una Poción en " + pokemon.getApodo());
-            return true;
-        } else {
-            System.out.println("¡No tienes Pociones!");
-            return false;
-        }
     }
 
     // Método para seleccionar Pokémon en menú
@@ -862,12 +861,9 @@ public class Player {
             return;
         }
 
-        System.out.println("🔄 Cargando datos guardados...");
-
         // Player.java -> cargarDatosGuardados
         if (this.getEntrenador() != null) {
             this.getEntrenador().vaciarEquipo(); // Usa el nuevo método
-            System.out.println("🧹 Equipo inicial limpiado.");
         }
 
         //Cargar pokedex
@@ -877,8 +873,6 @@ public class Player {
 
             if (registrosGuardados != null) {
                 this.getEntrenador().getPokedex().setRegistros(registrosGuardados);
-                System.out.println("✅ Pokédex cargada: " +
-                    this.getEntrenador().getPokedex().getTotalEspeciesVistas() + " especies.");
             }
         }
 
@@ -896,7 +890,6 @@ public class Player {
                     contador++;
                 }
             }
-            System.out.println("✅ Equipo cargado: " + contador + " Pokémon");
         }
 
         // 3. Cargar inventario
@@ -913,10 +906,8 @@ public class Player {
                     totalItems += slot.getCantidad();
                 }
             }
-            System.out.println("✅ Inventario cargado: " + totalItems + " ítems");
         }
 
-        System.out.println("🎮 ¡Datos cargados exitosamente!");
     }
 
     public boolean isLegendaryEncountered() {
@@ -976,7 +967,6 @@ public class Player {
             if (psObjetivo <= 0) {
                 pokemon.debilitado = true;
                 pokemon.psActual = 0;
-                System.out.println("⚠️ Pokémon " + simple.getApodo() + " cargado como DEBILITADO (0 PS)");
             } else {
                 pokemon.debilitado = false;
             }
@@ -1015,7 +1005,7 @@ public class Player {
         else if (nombreItem.equals("Super Poké Ball")) {
             Pokeball superBall = new Pokeball();
             superBall.setNombre("Super Poké Ball");
-            superBall.setTasaCaptura(1.5f); // ¡CORRECCIÓN CRÍTICA!
+            superBall.setTasaCaptura(1.5f);
             return superBall;
         }
 
@@ -1024,7 +1014,11 @@ public class Player {
             return new Curacion("Poción", 20);
         }
         else if (nombreItem.equals("Poción Grande")) {
-            return new Curacion("Poción Grande", 50); // ¡50 PS, no 20!
+            return new Curacion("Poción Grande", 50);
+        }
+
+       else if (nombreItem.equals("Revivir")) {
+            return new Revivir("Revivir", 50);
         }
 
         // 3. RECURSOS
@@ -1043,7 +1037,6 @@ public class Player {
 
         // 4. FALLBACK - Si no se reconoce, crear recurso genérico
         else {
-            System.out.println("⚠️ Item no reconocido en carga: " + nombreItem);
             // Intentar crear como recurso genérico
             return new Recurso(nombreItem, "Ítem guardado");
         }
@@ -1055,12 +1048,8 @@ public class Player {
     private PokedexManager clonarPokedex(PokedexManager original) {
         // Crear nueva instancia
         PokedexManager clon = new PokedexManager();
-
-        // Copiar registros (asumiendo que PokedexEntry es serializable)
-        // Nota: Esto es simplificado, necesitarías métodos de copia en PokedexManager
         try {
-            // Por ahora, simplemente devolvemos la original
-            // En una implementación real, necesitarías clonar profundamente
+
             return original;
         } catch (Exception e) {
             System.err.println("❌ Error clonando Pokédex");
@@ -1092,5 +1081,4 @@ public class Player {
             }
         }
     }
-
 }

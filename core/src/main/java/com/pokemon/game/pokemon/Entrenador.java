@@ -40,7 +40,6 @@ public class Entrenador {
         if (pokemonActual == null) {
             pokemonActual = pokemon;
         }
-        System.out.println("¡" + pokemon.getNombre() + " se ha unido al equipo!");
         return true;
     }
 

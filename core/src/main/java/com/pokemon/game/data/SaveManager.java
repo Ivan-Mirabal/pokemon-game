@@ -57,7 +57,6 @@ public class SaveManager {
             archivo.writeString(jsonString, false);
 
             System.out.println("✅ Partida guardada exitosamente en: " + archivo.path());
-            System.out.println("📂 Ruta absoluta: " + archivo.file().getAbsolutePath());
             return true;
 
         } catch (SerializationException e) {
@@ -126,11 +125,6 @@ public class SaveManager {
         String basePath = System.getProperty("user.dir");
         FileHandle dir = Gdx.files.absolute(basePath + "/" + SAVE_DIR);
 
-        // Debug: mostrar la ruta
-        System.out.println("📂 Ruta del directorio de saves: " + dir.path());
-        System.out.println("📂 Existe: " + dir.exists());
-        System.out.println("📂 Es directorio: " + (dir.exists() && dir.isDirectory()));
-
         return dir;
     }
 
@@ -138,10 +132,6 @@ public class SaveManager {
     public FileHandle getSaveFile() {
         String basePath = System.getProperty("user.dir");
         FileHandle file = Gdx.files.absolute(basePath + "/" + SAVE_PATH);
-
-        // Debug: mostrar la ruta
-        System.out.println("📄 Ruta del archivo de guardado: " + file.path());
-        System.out.println("📄 Existe: " + file.exists());
 
         return file;
     }

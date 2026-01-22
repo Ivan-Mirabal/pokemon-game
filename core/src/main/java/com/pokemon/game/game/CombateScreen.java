@@ -83,6 +83,8 @@ public class CombateScreen implements Screen {
     private boolean finalizando = false;
     private boolean destruido = false;
 
+    private boolean modoRevivir = false;
+
     // Constantes para posiciones
     private final float MENU_Y = 50;
     private final float MENU_HEIGHT = 120;
@@ -153,7 +155,7 @@ public class CombateScreen implements Screen {
 
         // Intentar cargar fondo
         try {
-            fondoCombate = new Texture(Gdx.files.internal("sprites/combate/fondo1.png"));
+            fondoCombate = new Texture(Gdx.files.internal("sprites/combate/fondo.png"));
         } catch (Exception e) {
             fondoCombate = null;
         }
@@ -299,7 +301,9 @@ public class CombateScreen implements Screen {
                 estadoActual = EstadoMenu.MENU_OBJETOS;
                 seleccionObjeto = 0;
                 break;
-            case 2: // POKéMON
+            case 2: // Opción POKéMON
+                modoRevivir = false; // Asegurarnos de que está apagado
+                actualizarEquipoVisible(); // Solo mostrará los vivos
                 estadoActual = EstadoMenu.MENU_POKEMON;
                 seleccionPokemon = 0;
                 break;
@@ -406,18 +410,28 @@ public class CombateScreen implements Screen {
                     seleccionPokemon++;
                 }
                 return true;
+
             case Keys.ENTER:
             case Keys.SPACE:
-                if (estadoActual == EstadoMenu.CAMBIO_FORZADO) {
+                // --- NUEVA LÓGICA: MODO REVIVIR ---
+                if (modoRevivir) {
+                    ejecutarAccionRevivir(); // Lo movemos a un método aparte para que quede limpio
+                }
+                // --- LÓGICA ORIGINAL ---
+                else if (estadoActual == EstadoMenu.CAMBIO_FORZADO) {
                     cambiarPokemonForzado();
                 } else {
                     cambiarPokemon();
                 }
                 return true;
+
             case Keys.B:
             case Keys.ESCAPE:
-                // En cambio forzado, no se puede cancelar
-                if (estadoActual != EstadoMenu.CAMBIO_FORZADO) {
+                if (modoRevivir) {
+                    modoRevivir = false;
+                    actualizarEquipoVisible(); // Volver a filtrar para el menú normal
+                    estadoActual = EstadoMenu.MENU_OBJETOS;
+                } else if (estadoActual != EstadoMenu.CAMBIO_FORZADO) {
                     estadoActual = EstadoMenu.MENU_PRINCIPAL;
                 }
                 return true;
@@ -430,7 +444,7 @@ public class CombateScreen implements Screen {
         List<Ranura> objetosCombate = new ArrayList<>();
         for (Ranura ranura : player.getInventario().getRanuras()) {
             Item item = ranura.getItem();
-            if (item instanceof Pokeball || item instanceof Curacion) {
+            if (item instanceof Pokeball || item instanceof Curacion || item instanceof Revivir) {
                 objetosCombate.add(ranura);
             }
         }
@@ -619,8 +633,8 @@ public class CombateScreen implements Screen {
         }
 
         // Dibujar barras de salud
-        dibujarBarraSalud(combate.getPokemonJugador(), 50, 50, true);
-        dibujarBarraSalud(combate.getPokemonRival(), 450, 450, false);
+        dibujarBarraSalud(combate.getPokemonJugador(), 575, 180, true);
+        dibujarBarraSalud(combate.getPokemonRival(), 50, 450, false);
 
         // Dibujar interfaz según estado
         switch (estadoActual) {
@@ -652,7 +666,7 @@ public class CombateScreen implements Screen {
     }
 
     private void dibujarBarraSalud(Pokemon pokemon, float x, float y, boolean esJugador) {
-        float anchoBarra = 120;
+        float anchoBarra = 180;
         float altoBarra = 12;
 
         // Fondo de la barra
@@ -1268,7 +1282,7 @@ public class CombateScreen implements Screen {
 
         for (Ranura ranura : todasLasRanuras) {
             Item item = ranura.getItem();
-            if (item instanceof Pokeball || item instanceof Curacion) {
+            if (item instanceof Pokeball || item instanceof Curacion || item instanceof Revivir) {
                 objetosCombate.add(ranura);
             }
         }
@@ -1322,6 +1336,9 @@ public class CombateScreen implements Screen {
                 if (item instanceof Pokeball) {
                     colorIcono = new Color(1f, 0.3f, 0.3f, 1);
                     textoIcono = "POKÉ";
+                } else if (item instanceof Revivir) { // <--- NUEVO ICONO
+                    colorIcono = new Color(1f, 1f, 0.2f, 1); // Amarillo
+                    textoIcono = "REVIVE";
                 } else if (item instanceof Curacion) {
                     colorIcono = new Color(0.3f, 1f, 0.3f, 1);
                     textoIcono = "CURAR";
@@ -1373,7 +1390,10 @@ public class CombateScreen implements Screen {
                 font.setColor(colorIcono);
 
                 String efectoTexto = "";
-                if (item instanceof Pokeball) {
+                if (item instanceof Revivir) { // <--- NUEVO TEXTO
+                    Revivir rev = (Revivir) item;
+                    efectoTexto = "REVIVE: " + rev.getPorcentajeRecuperacion() + "% PS";
+                } else if (item instanceof Pokeball) {
                     Pokeball pokeball = (Pokeball) item;
                     efectoTexto = "CAPTURA: " + pokeball.getTasaCaptura();
                 } else if (item instanceof Curacion) {
@@ -1660,7 +1680,7 @@ public class CombateScreen implements Screen {
         List<Ranura> itemsCombate = new ArrayList<>();
         for (Ranura ranura : player.getInventario().getRanuras()) {
             Item item = ranura.getItem();
-            if (item instanceof Pokeball || item instanceof Curacion) {
+            if (item instanceof Pokeball || item instanceof Curacion || item instanceof Revivir) {
                 itemsCombate.add(ranura);
             }
         }
@@ -1682,6 +1702,14 @@ public class CombateScreen implements Screen {
 
         // Guardar historial antes
         int historialAntes = combate.getHistorial().size();
+
+        if (item instanceof Revivir) {
+            modoRevivir = true;
+            actualizarEquipoVisible(); // 2. Refrescamos la lista (ahora mostrará a todos)
+            estadoActual = EstadoMenu.MENU_POKEMON;
+            seleccionPokemon = 0;
+            return;
+        }
 
         if (item instanceof Pokeball) {
             // Intentar captura
@@ -1717,6 +1745,35 @@ public class CombateScreen implements Screen {
         }
     }
 
+    private void ejecutarAccionRevivir() {
+        PokemonJugador seleccionado = equipoVisible.get(seleccionPokemon);
+
+        if (seleccionado.estaDebilitado()) {
+            // 1. Aplicar efecto (50% de vida por ejemplo)
+            seleccionado.revivir(50);
+
+            // 2. Consumir el item del inventario
+            player.getInventario().removerItem("Revivir", 1);
+
+            // 3. Configurar mensajes
+            mensajes.clear();
+            mensajes.add("¡" + seleccionado.getApodo() + " ha revivido!");
+
+            // 4. Finalizar turno y limpiar bandera
+            modoRevivir = false;
+            combate.ejecutarTurnoRival();
+            prepararMensajesParaAccion(); // El método que ya tienes para actualizar historial
+            estadoActual = EstadoMenu.MOSTRANDO_MENSAJE;
+        } else {
+            // Error si intentas revivir a alguien sano
+            mensajes.clear();
+            mensajes.add("¡" + seleccionado.getApodo() + " no necesita eso!");
+            indiceMensaje = 0;
+            estadoActual = EstadoMenu.MOSTRANDO_MENSAJE;
+            // No quitamos modoRevivir para que el jugador pueda elegir a otro
+        }
+    }
+
     private void intentarHuir() {
         // Guardar historial antes
         int historialAntes = combate.getHistorial().size();
@@ -1740,10 +1797,6 @@ public class CombateScreen implements Screen {
         indiceMensaje++;
 
         if (indiceMensaje >= mensajes.size()) {
-            // Todos los mensajes de esta acción fueron mostrados
-            if (combate.getPokemonJugador().estaDebilitado()) {
-                System.out.println("✅ Pokémon detectado como debilitado en avanzarMensaje()");
-            }
             if (combate.isCombateTerminado()) {
                 estadoActual = EstadoMenu.FIN_COMBATE;
             } else if (combate.getPokemonJugador().estaDebilitado()) {
@@ -1795,11 +1848,10 @@ public class CombateScreen implements Screen {
     private void actualizarEquipoVisible() {
         equipoVisible.clear();
         for (PokemonJugador p : player.getEntrenador().getEquipo()) {
-            if (!p.estaDebilitado()) {
+            if (modoRevivir || !p.estaDebilitado()) {
                 equipoVisible.add(p);
             }
         }
-        seleccionPokemon = 0;
     }
 
     private void terminarCombate() {
@@ -1837,7 +1889,6 @@ public class CombateScreen implements Screen {
         // Volver a GameScreen
         game.setScreen(gameScreen);
     }
-
 
     private void actualizarMensajesDesdeHistorial() {
         List<String> historial = combate.getHistorial();

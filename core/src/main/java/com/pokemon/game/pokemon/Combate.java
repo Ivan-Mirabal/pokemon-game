@@ -87,16 +87,6 @@ public class Combate {
             if (pokemonRival.estaDebilitado()) {
                 registrarEvento("¡" + pokemonRival.getNombre() + " fue debilitado!");
 
-                // Registrar victoria si el Pokémon jugador es un PokemonJugador
-                if (pokemonJugador instanceof PokemonJugador) {
-                    PokemonJugador pj = (PokemonJugador) pokemonJugador;
-                    if (pj.getEntrenador() != null) {
-                        pj.getEntrenador().registrarVictoriaContraPokemon(
-                            pokemonRival.getEspecie().getNombre()
-                        );
-                    }
-                }
-
                 combateTerminado = true;
                 motivoFin = "victoria";
                 return ResultadoTurno.POKEMON_DEBILITADO;
@@ -110,7 +100,6 @@ public class Combate {
     }
 
     // Turno del rival (IA simple)
-    // Reemplaza el método ejecutarTurnoRival() con esta versión mejorada:
 
     public void ejecutarTurnoRival() {
         if (pokemonJugador.estaDebilitado() || pokemonRival.estaDebilitado()) {
@@ -240,7 +229,6 @@ public class Combate {
                     nuevo.setApodo(nombreRival);
                 }
 
-                System.out.println("✅ Movimientos copiados: " + nuevo.getMovimientos().size());
             } else {
                 // Para compatibilidad con Pokémon de entrenadores
                 nuevo = new PokemonJugador(
@@ -380,7 +368,7 @@ public class Combate {
         // 1. Dar experiencia al Pokémon que luchó
         if (pokemonJugador instanceof PokemonJugador) {
             PokemonJugador pj = (PokemonJugador) pokemonJugador;
-            pj.ganarExperiencia(recompensa.experiencia);
+            pj.ganarExperiencia(recompensa.experiencia * 2);
             registrarEvento(pj.getApodo() + " ganó " + recompensa.experiencia + " puntos de experiencia!");
         }
 

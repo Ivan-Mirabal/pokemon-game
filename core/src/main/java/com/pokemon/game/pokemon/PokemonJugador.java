@@ -28,7 +28,7 @@ public class PokemonJugador extends Pokemon {
         experiencia += expGanada;
 
         // 100 exp por nivel (simple)
-        while (experiencia >= nivel * 100) {
+        while (experiencia >= nivel * 70) {
             subirNivel();
         }
     }

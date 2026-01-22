@@ -84,7 +84,6 @@ public class SplashScreen implements Screen {
 
     @Override
     public void dispose() {
-        System.out.println("SplashScreen: Disposing resources");
         if (batch != null) {
             batch.dispose();
             batch = null;

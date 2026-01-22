@@ -1,47 +1,35 @@
 {
 "pokedex": {
 	"registros": {
-		"Pikachu": {
+		"Charmander": {
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
-			"especie": "Pikachu",
+			"especie": "Charmander",
 			"visto": true,
+			"capturado": true,
 			"vecesVisto": 1,
-			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "20/01/2026 11:44"
+			"vecesCapturado": 1,
+			"primerAvistamientoUbicacion": "Regalo Inicial",
+			"primerAvistamientoFecha": "21/01/2026 22:03",
+			"primeraCapturaUbicacion": "Regalo Inicial",
+			"primeraCapturaFecha": "21/01/2026 22:03"
 		},
-		"Jigglypuff": {
+		"Riolu": {
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
-			"especie": "Jigglypuff",
+			"especie": "Riolu",
 			"visto": true,
-			"vecesVisto": 1,
+			"vecesVisto": 2,
 			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "20/01/2026 13:41"
-		},
-		"Farfetch'd": {
-			"class": "com.pokemon.game.pokedex.PokedexEntry",
-			"especie": "Farfetch'd",
-			"visto": true,
-			"vecesVisto": 1,
-			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "20/01/2026 12:07"
+			"primerAvistamientoFecha": "21/01/2026 22:04"
 		}
 	}
 },
 "equipo": [
 	{
-		"especie": "Pikachu",
-		"apodo": "Pika",
+		"especie": "Charmander",
+		"apodo": "Charmander",
 		"nivel": 5,
-		"psActual": 5,
+		"psActual": 9,
 		"psMaximos": 18,
-		"experiencia": 0
-	},
-	{
-		"especie": "Charizard",
-		"apodo": "Jorge",
-		"nivel": 8,
-		"psActual": 30,
-		"psMaximos": 30,
 		"experiencia": 0
 	}
 ],
@@ -52,7 +40,11 @@
 	},
 	{
 		"nombreItem": "Poción",
-		"cantidad": 3
+		"cantidad": 2
+	},
+	{
+		"nombreItem": "Revivir",
+		"cantidad": 1
 	},
 	{
 		"nombreItem": "Planta",
@@ -64,11 +56,11 @@
 	},
 	{
 		"nombreItem": "Baya",
-		"cantidad": 4
+		"cantidad": 3
 	},
 	{
 		"nombreItem": "Metal",
-		"cantidad": 5
+		"cantidad": 6
 	}
 ]
 }

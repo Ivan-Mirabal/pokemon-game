@@ -18,13 +18,10 @@ public class EncountersManager {
     public void update(float deltaTime) {
         if (!puedeEncontrarPokemon) {
             tiempoDesdeUltimoEncuentro += deltaTime;
-            System.out.println("[EncountersManager] Cooldown: " + tiempoDesdeUltimoEncuentro +
-                "/" + TIEMPO_MINIMO_ENTRE_ENCUENTROS);
 
             if (tiempoDesdeUltimoEncuentro >= TIEMPO_MINIMO_ENTRE_ENCUENTROS) {
                 puedeEncontrarPokemon = true;
                 tiempoDesdeUltimoEncuentro = 0;
-                System.out.println("[EncountersManager] Cooldown terminado, listo para nuevo encuentro");
             }
         }
     }
@@ -38,8 +35,6 @@ public class EncountersManager {
         if (random > PROBABILIDAD_BASE) {
             return null;
         }
-
-        System.out.println("[Encounters] ¡Encuentro generado!");
 
         PokemonSalvaje encontrado = FabricaPokemon.generarEncuentroAleatorio(zona, nivelJugador);
 

@@ -20,10 +20,7 @@ import com.pokemon.game.*;
 import com.pokemon.game.data.DataLoader;
 import com.pokemon.game.data.SaveData;
 import com.pokemon.game.data.SaveManager;
-import com.pokemon.game.item.Crafteo;
-import com.pokemon.game.item.Curacion;
-import com.pokemon.game.item.Item;
-import com.pokemon.game.item.Pokeball;
+import com.pokemon.game.item.*;
 import com.pokemon.game.player.Inventario;
 import com.pokemon.game.player.Player;
 import com.pokemon.game.player.Ranura;
@@ -81,6 +78,8 @@ public class GameScreen implements Screen {
     private final BitmapFont font;
     private final Texture whitePixel;
 
+    private PokemonJugador pokemonInicialParaJugador;
+
     // Sistema de recolección
     private SistemaRecoleccion sistemaRecoleccion;
     private boolean estaEnHierba = false;
@@ -95,10 +94,15 @@ public class GameScreen implements Screen {
     private boolean legendaryEventActive = false;
 
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY) {
+        this(game, initialMap, startX, startY, null);
+    }
+
+    public GameScreen(final PokemonGame game, String initialMap, float startX, float startY, PokemonJugador inicial) {
         this.game = game;
         this.initialMap = initialMap;
         this.startX = startX;
         this.startY = startY;
+        this.pokemonInicialParaJugador = inicial;
 
         this.font = new BitmapFont();
         this.font.setColor(Color.WHITE);
@@ -126,7 +130,6 @@ public class GameScreen implements Screen {
             loadMap(initialMap, startX, startY);
             game.musics.stopmenumusic();
             game.musics.startopenworldmusic();
-            cargarSpritesPokemon();
             pokedexScreen = new PokedexScreen(player);
         } else {
             // Si ya hay un mapa cargado, solo restaurar la música
@@ -171,13 +174,14 @@ public class GameScreen implements Screen {
         }
 
         if (player == null) {
-            player = new Player("sprites/player.png", playerX, playerY, tileWidth, tileHeight, this);
+            // PASAMOS EL INICIAL AL JUGADOR
+            player = new Player("sprites/player.png", playerX, playerY,
+                tileWidth, tileHeight, this, pokemonInicialParaJugador);
 
-            // AQUÍ es donde debes inicializar sistemaRecoleccion
-            if (sistemaRecoleccion == null) {
-                sistemaRecoleccion = new SistemaRecoleccion(player);
-                System.out.println("✅ Sistema de recolección inicializado");
-            }
+            // Ya lo usamos, lo ponemos a null para no volver a agregarlo si cambiamos de mapa
+            pokemonInicialParaJugador = null;
+
+            // ... (inicializar sistemaRecoleccion, etc.) ...
         } else {
             player.x = playerX;
             player.y = playerY;
@@ -186,7 +190,6 @@ public class GameScreen implements Screen {
             // Si el sistema no estaba inicializado, inicialízar
             if (sistemaRecoleccion == null) {
                 sistemaRecoleccion = new SistemaRecoleccion(player);
-                System.out.println("✅ Sistema de recolección inicializado (mapa cambiado)");
             }
         }
 
@@ -305,9 +308,9 @@ public class GameScreen implements Screen {
 
                 if (especiesCompletas < 5) {
                     // ❌ NO CUMPLE REQUISITOS - Mostrar mensaje
-                    System.out.println("❌ ¡Necesitas investigar completamente 5 especies Pokémon!");
-                    System.out.println("🔬 Actual: " + especiesCompletas + "/5 especies");
-                    System.out.println("📍 Ve a tu Pokédex para ver tu progreso");
+                    System.out.println("¡Necesitas investigar completamente 5 especies Pokémon!");
+                    System.out.println("Actual: " + especiesCompletas + "/5 especies");
+                    System.out.println("Ve a tu Pokédex para ver tu progreso");
                     return; // BLOQUEAR ACCESO
                 }
 
@@ -316,15 +319,15 @@ public class GameScreen implements Screen {
                 boolean yaVioArceus = (arceusEntry != null && arceusEntry.isVisto());
 
                 if (yaVioArceus) {
-                    // ❌ YA ENCONTRÓ ARCEUS - Portal cerrado permanentemente
-                    System.out.println("❌ El portal legendario se ha sellado...");
-                    System.out.println("✨ Has completado el encuentro legendario.");
+                    // YA ENCONTRÓ ARCEUS - Portal cerrado permanentemente
+                    System.out.println("El portal legendario se ha sellado...");
+                    System.out.println("Has completado el encuentro legendario.");
                     return; // BLOQUEAR ACCESO PERMANENTEMENTE
                 }
 
                 // ✅ TODAS LAS CONDICIONES CUMPLIDAS - ACCESO PERMITIDO
-                System.out.println("✨ ¡Portal legendario activado!");
-                System.out.println("🌀 Teletransportándote a la dimensión de Arceus...");
+                System.out.println("¡Portal legendario activado!");
+                System.out.println("Teletransportándote a la dimensión de Arceus...");
 
                 transitionToMap(currentMapInfo.northMap, player.x, tileHeight * 2);
                 transitionCooldown = TRANSITION_COOLDOWN_TIME;
@@ -394,11 +397,6 @@ public class GameScreen implements Screen {
             // Aquí podrías poner música especial si tienes
         }
 
-        System.out.println("==========================================");
-        System.out.println("¡UN PODER CÓSMICO EMANA DEL CIELO!");
-        System.out.println("¡ARCEUS HA APARECIDO!");
-        System.out.println("==========================================");
-
         // Crear Arceus nivel 45 (como está en el JSON)
         PokemonSalvaje arceus = FabricaPokemon.crearPokemonSalvaje("Arceus", 45);
 
@@ -444,22 +442,6 @@ public class GameScreen implements Screen {
         }
 
         return false;
-    }
-
-    private void cargarSpritesPokemon() {
-        pokemonSprites = new HashMap<>();
-        String[] nombresPokemon = {"pikachu", "charmander", "charizard"};
-
-        for (String nombre : nombresPokemon) {
-            try {
-                Texture sprite = new Texture(Gdx.files.internal("sprites/pokemon/" + nombre + ".png"));
-                pokemonSprites.put(nombre, sprite);
-                System.out.println("Sprite precargado: " + nombre);
-            } catch (Exception e) {
-                System.out.println("No se pudo cargar sprite para: " + nombre);
-                // El placeholder se creará en PokemonJugador
-            }
-        }
     }
 
     @Override
@@ -816,13 +798,13 @@ public class GameScreen implements Screen {
             boolean exito = SaveManager.getInstance().guardarPartida(datos);
 
             if (exito) {
-                System.out.println("✅ ¡Partida guardada exitosamente!");
+                System.out.println("¡Partida guardada exitosamente!");
                 // Podrías añadir un mensaje visual aquí
             } else {
-                System.out.println("❌ Error al guardar la partida");
+                System.out.println("Error al guardar la partida");
             }
         } catch (Exception e) {
-            System.err.println("❌ Error en guardarPartidaActual: " + e.getMessage());
+            System.err.println("Error en guardarPartidaActual: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -835,9 +817,8 @@ public class GameScreen implements Screen {
 
         if (this.player != null && datos != null) {
             this.player.cargarDatosGuardados(datos);
-            System.out.println("✅ ¡Datos transferidos al jugador con éxito!");
         } else {
-            System.out.println("❌ ERROR CRÍTICO: El objeto player sigue siendo nulo en GameScreen");
+            System.out.println("ERROR CRÍTICO: El objeto player sigue siendo nulo en GameScreen");
         }
     }
 
@@ -946,7 +927,7 @@ public class GameScreen implements Screen {
 
         for (Ranura slot : inv.getRanuras()) {
             Item item = slot.getItem();
-            if (item instanceof Curacion) {
+            if (item instanceof Curacion || item instanceof Revivir) {
                 pociones.add(slot);
             } else if (item instanceof Pokeball) {
                 pokeballs.add(slot);
@@ -1108,6 +1089,12 @@ public class GameScreen implements Screen {
             font.draw(spriteBatch, "Cura: " + pocion.getHpRestaurado() + " PS",
                 panelX + 200, panelY + panelAlto - 45);
             font.draw(spriteBatch, "Enter: Usar en Pokémon",
+                panelX + 200, panelY + panelAlto - 70);
+        } else if (slot.getItem() instanceof Revivir) { // <--- NUEVO BLOQUE
+            Revivir revivir = (Revivir) slot.getItem();
+            font.draw(spriteBatch, "Revive: " + revivir.getPorcentajeRecuperacion() + "% PS",
+                panelX + 200, panelY + panelAlto - 45);
+            font.draw(spriteBatch, "Usar en Pokémon debilitado",
                 panelX + 200, panelY + panelAlto - 70);
         } else if (slot.getItem() instanceof Pokeball) {
             Pokeball ball = (Pokeball) slot.getItem();
@@ -1731,30 +1718,6 @@ public class GameScreen implements Screen {
         font.draw(spriteBatch, "Captura salvaje", x + 150, y);
         y -= 40;
 
-        // ELIMINADO: Línea divisoria y sección "OTROS DATOS"
-        // spriteBatch.setColor(new Color(0.8f, 0.8f, 0.85f, 1));
-        // spriteBatch.draw(whitePixel, x, y, ancho, 1);
-        // spriteBatch.setColor(Color.WHITE);
-        // y -= 30;
-
-        // ELIMINADO: "OTROS DATOS" y sus campos
-        // font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
-        // font.getData().setScale(1.2f);
-        // font.draw(spriteBatch, "OTROS DATOS", x, y);
-        // font.getData().setScale(1.0f);
-        // y -= 40;
-        //
-        // font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
-        // font.draw(spriteBatch, "ID del Entrenador:", x, y);
-        // font.setColor(Color.BLACK);
-        // font.draw(spriteBatch, "00001", x + 150, y);
-        // y -= 25;
-        //
-        // font.setColor(new Color(0.3f, 0.3f, 0.5f, 1));
-        // font.draw(spriteBatch, "Nombre OT:", x, y);
-        // font.setColor(Color.BLACK);
-        // font.draw(spriteBatch, player.getEntrenador().getNombre(), x + 150, y);
-
         // En su lugar, podemos agregar un mensaje o dejar espacio
         font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
         font.getData().setScale(0.9f);
@@ -2000,6 +1963,9 @@ public class GameScreen implements Screen {
                     font.draw(spriteBatch, "• 1x Poción Grande", columnaDetallesX, detallesY);
                     font.draw(spriteBatch, "  (Cura 50 PS)", columnaDetallesX + 10, detallesY - 18);
                     break;
+                case 5:
+                    font.draw(spriteBatch, "• 1x Revivir", columnaDetallesX, detallesY);
+                    font.draw(spriteBatch, "  Revive a tu Pokemon", columnaDetallesX + 10, detallesY - 18);
             }
         }
     }
@@ -2261,8 +2227,6 @@ public class GameScreen implements Screen {
     }
 
     public void iniciarCombate(PokemonSalvaje pokemonSalvaje) {
-        // Guardar posición actual para referencia (opcional, para debugging)
-        System.out.println("📍 Posición antes del combate: " + player.x + ", " + player.y);
 
         // Detener música del mundo abierto
         if (game.musics != null) {
@@ -2377,12 +2341,12 @@ public class GameScreen implements Screen {
 
             switch (columna) {
                 case 0: // Recursos
-                    if (!(item instanceof Curacion) && !(item instanceof Pokeball)) {
+                    if (!(item instanceof Curacion) && !(item instanceof Revivir) && !(item instanceof Pokeball)) {
                         resultado.add(slot);
                     }
                     break;
                 case 1: // Pociones
-                    if (item instanceof Curacion) {
+                    if (item instanceof Curacion || item instanceof Revivir) {
                         resultado.add(slot);
                     }
                     break;

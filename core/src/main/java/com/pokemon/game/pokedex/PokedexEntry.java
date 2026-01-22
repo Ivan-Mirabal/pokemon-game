@@ -31,6 +31,24 @@ public class PokedexEntry {
         this.primeraCapturaFecha = null;
     }
 
+    // Método especial para el inicial: Marca visto y capturado pero NO sube nivel
+    public void registrarInicial() {
+        if (!visto) {
+            visto = true;
+            primerAvistamientoUbicacion = "Regalo Inicial";
+            primerAvistamientoFecha = obtenerFechaActual();
+            vecesVisto = 1;
+        }
+        if (!capturado) {
+            capturado = true;
+            primeraCapturaUbicacion = "Regalo Inicial";
+            primeraCapturaFecha = obtenerFechaActual();
+            vecesCapturado = 1;
+        }
+        // IMPORTANTE: No llamamos a incrementarNivelInvestigacion
+        // El nivel se mantiene en 0
+    }
+
     // Cuando ves un Pokémon
     public void registrarAvistamiento(String ubicacion) {
         if (!visto) {

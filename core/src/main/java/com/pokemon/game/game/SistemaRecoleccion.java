@@ -69,11 +69,14 @@ public class SistemaRecoleccion {
         boolean exito = player.recolectarRecurso(recurso);
 
         if (exito) {
+            System.out.println("[RECOLECCIÓN] ¡Has encontrado " + recursoNombre + "! (x1)");
+
             // Resetear para nueva oportunidad
             oportunidadDisponible = false;
             tiempoDesdeUltimaOportunidad = 0f;
+        } else {
+            System.out.println("[RECOLECCIÓN] No se pudo recolectar " + recursoNombre + " (inventario lleno)");
         }
-
     }
 
     public void dibujarInterfaz(SpriteBatch batch, BitmapFont font, float screenWidth, float screenHeight) {

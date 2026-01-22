@@ -46,11 +46,9 @@ public class Ranura {
     }
 
     // MÉTODO NUEVO: Usar cantidad específica (para crafteo)
-    public boolean usarCantidad(int cantidadUsar) {
+    public void usarCantidad(int cantidadUsar) {
         if (cantidad >= cantidadUsar) {
             decrementar(cantidadUsar);
-            return true;
         }
-        return false;
     }
 }

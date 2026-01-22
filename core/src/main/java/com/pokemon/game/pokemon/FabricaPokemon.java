@@ -51,7 +51,6 @@ public class FabricaPokemon {
                 );
 
                 especiesCache.put(data.name, especie);
-                System.out.println("✓ Especie creada: " + data.name);
 
             } catch (Exception e) {
                 System.err.println("Error creando especie " + data.name + ": " + e.getMessage());
@@ -210,11 +209,6 @@ public class FabricaPokemon {
     }
 
     public static PokemonSalvaje generarEncuentroAleatorio(String zona, int nivelBase) {
-        System.out.println("=== GENERANDO ENCUENTRO PARA ZONA: " + zona + " ===");
-
-        // Debug: mostrar todas las zonas cargadas
-        System.out.println("Zonas disponibles en datos: " +
-            DataLoader.getInstance().getEncountersForZone(zona));
 
         List<DataLoader.EncounterData> encuentros = DataLoader.getInstance().getEncountersForZone(zona);
 
@@ -234,13 +228,10 @@ public class FabricaPokemon {
         }
 
         // Mostrar encuentros disponibles
-        System.out.println("Encuentros disponibles en " + zona + ":");
         int totalProb = 0;
         for (DataLoader.EncounterData e : encuentros) {
-            System.out.println("  - " + e.species + " (" + e.probability + "%) Nv." + e.minLevel + "-" + e.maxLevel);
             totalProb += e.probability;
         }
-        System.out.println("Probabilidad total: " + totalProb + "%");
 
         // Calcular probabilidad total
         int random = (int)(Math.random() * totalProb);
@@ -261,8 +252,6 @@ public class FabricaPokemon {
 
         // Generar nivel aleatorio dentro del rango
         int nivel = seleccionado.minLevel + (int)(Math.random() * (seleccionado.maxLevel - seleccionado.minLevel + 1));
-
-        System.out.println("✅ Encuentro seleccionado: " + seleccionado.species + " Nv." + nivel);
 
         return crearPokemonSalvaje(seleccionado.species, nivel);
     }
