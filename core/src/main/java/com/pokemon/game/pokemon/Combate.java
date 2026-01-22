@@ -8,23 +8,58 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Gestiona la lógica completa de un combate Pokémon entre un Pokémon del jugador
+ * y un Pokémon rival, incluyendo turnos, movimientos, captura y recompensas.
+ * Implementa un sistema de combate por turnos con mecánicas de velocidad,
+ * captura de Pokémon salvajes y efectos especiales para Pokémon legendarios.
+ */
 public class Combate {
-    private Pokemon pokemonJugador;
-    private Pokemon pokemonRival;
-    private boolean turnoJugador;
-    private List<String> historial;
-    private boolean combateTerminado;
-    private String motivoFin; // "victoria", "derrota", "captura", "huida"
 
+    /** Pokémon controlado por el jugador que actualmente está en combate */
+    private Pokemon pokemonJugador;
+
+    /** Pokémon oponente contra el que se está luchando */
+    private Pokemon pokemonRival;
+
+    /** Indica si es el turno del jugador (true) o del rival (false) */
+    private boolean turnoJugador;
+
+    /** Registro histórico de todos los eventos ocurridos durante el combate */
+    private List<String> historial;
+
+    /** Bandera que indica si el combate ha finalizado por cualquier motivo */
+    private boolean combateTerminado;
+
+    /** Motivo por el cual terminó el combate: "victoria", "derrota", "captura", "huida" */
+    private String motivoFin;
+
+    /**
+     * Resultados posibles al intentar ejecutar un turno del jugador,
+     * utilizados para comunicar el estado de la acción al sistema de interfaz.
+     */
     public enum ResultadoTurno {
+        /** La acción del turno se ejecutó correctamente */
         EXITO,
+        /** Se intentó actuar cuando no era el turno del jugador */
         NO_ES_TU_TURNO,
+        /** Se seleccionó un índice de movimiento no válido */
         MOVIMIENTO_INVALIDO,
+        /** El movimiento seleccionado no tiene puntos de poder (PP) disponibles */
         SIN_PP,
+        /** El Pokémon objetivo ya está debilitado */
         POKEMON_DEBILITADO,
+        /** El combate ya ha terminado y no se pueden realizar más acciones */
         COMBATE_TERMINADO
     }
 
+    /**
+     * Inicializa un nuevo combate configurando los Pokémon participantes,
+     * determinando el primer turno por velocidad y registrando el evento inicial.
+     *
+     * @param jugador Pokémon controlado por el jugador que inicia el combate
+     * @param rival Pokémon oponente contra el que se va a combatir
+     */
     public Combate(Pokemon jugador, Pokemon rival) {
         this.pokemonJugador = jugador;
         this.pokemonRival = rival;
@@ -32,7 +67,7 @@ public class Combate {
         this.combateTerminado = false;
         this.motivoFin = null;
 
-        // Determinar quién va primero por velocidad
+        // Determina qué Pokémon ataca primero comparando sus estadísticas de velocidad
         turnoJugador = jugador.getVelocidad() >= rival.getVelocidad();
 
         registrarEvento("¡Comienza el combate!");
@@ -46,7 +81,14 @@ public class Combate {
         }
     }
 
-    // Turno del jugador
+    /**
+     * Ejecuta el turno del jugador utilizando el movimiento seleccionado.
+     * Realiza todas las validaciones necesarias antes de aplicar el daño
+     * y cambia el turno al rival si la acción fue exitosa.
+     *
+     * @param indiceMovimiento Índice del movimiento a utilizar (0-3)
+     * @return Resultado de la operación según el enum ResultadoTurno
+     */
     public ResultadoTurno ejecutarTurnoJugador(int indiceMovimiento) {
         if (combateTerminado) {
             return ResultadoTurno.COMBATE_TERMINADO;
@@ -57,11 +99,10 @@ public class Combate {
         }
 
         if (pokemonJugador.estaDebilitado() || pokemonRival.estaDebilitado()) {
-            // No terminar el combate aquí, dejar que CombateScreen maneje
             return ResultadoTurno.COMBATE_TERMINADO;
         }
 
-        // Obtener movimiento
+        // Obtiene el movimiento seleccionado de la lista del Pokémon
         List<Movimiento> movimientos = pokemonJugador.getMovimientos();
         if (indiceMovimiento < 0 || indiceMovimiento >= movimientos.size()) {
             return ResultadoTurno.MOVIMIENTO_INVALIDO;
@@ -72,7 +113,7 @@ public class Combate {
             return ResultadoTurno.SIN_PP;
         }
 
-        // Usar movimiento
+        // Utiliza el movimiento y calcula el daño infligido
         movimiento.usar();
         int daño = movimiento.calcularDaño(pokemonJugador, pokemonRival);
 
@@ -83,7 +124,7 @@ public class Combate {
             registrarEvento(pokemonJugador.getNombre() + " usa " + movimiento.getNombre() +
                 " y causa " + daño + " puntos de daño!");
 
-            // Verificar si el rival fue debilitado
+            // Verifica si el Pokémon rival fue debilitado por el ataque
             if (pokemonRival.estaDebilitado()) {
                 registrarEvento("¡" + pokemonRival.getNombre() + " fue debilitado!");
 
@@ -93,20 +134,24 @@ public class Combate {
             }
         }
 
-        // Cambiar turno
+        // Transfiere el control al rival para su siguiente turno
         turnoJugador = false;
 
         return ResultadoTurno.EXITO;
     }
 
-    // Turno del rival (IA simple)
-
+    /**
+     * Ejecuta el turno del rival utilizando una IA simple que selecciona
+     * aleatoriamente entre los movimientos disponibles con PP restantes.
+     * El daño se calcula y aplica al Pokémon del jugador, finalizando el
+     * combate si resulta debilitado.
+     */
     public void ejecutarTurnoRival() {
         if (pokemonJugador.estaDebilitado() || pokemonRival.estaDebilitado()) {
             return;
         }
 
-        // 1. Obtener todos los movimientos disponibles (con PP)
+        // Filtra solo los movimientos que tienen puntos de poder disponibles
         List<Movimiento> movimientosDisponibles = new ArrayList<>();
         for (Movimiento movimiento : pokemonRival.getMovimientos()) {
             if (movimiento.puedeUsar()) {
@@ -114,22 +159,21 @@ public class Combate {
             }
         }
 
-        // 2. Si no hay movimientos disponibles, no hace nada
+        // Si no hay movimientos disponibles, el rival no puede atacar
         if (movimientosDisponibles.isEmpty()) {
             registrarEvento("¡" + pokemonRival.getNombre() + " no tiene movimientos disponibles!");
             turnoJugador = true;
             return;
         }
 
-        // 3. Seleccionar un movimiento ALEATORIO
+        // Selecciona un movimiento aleatorio de los disponibles
         int indiceAleatorio = (int)(Math.random() * movimientosDisponibles.size());
         Movimiento movimiento = movimientosDisponibles.get(indiceAleatorio);
 
-        // 4. Usar el movimiento
+        // Usa el movimiento y calcula el daño infligido
         movimiento.usar();
         int daño = movimiento.calcularDaño(pokemonRival, pokemonJugador);
 
-        // 5. Registrar resultado
         if (daño == 0) {
             registrarEvento("¡El ataque de " + pokemonRival.getNombre() + " falló!");
         } else {
@@ -142,13 +186,22 @@ public class Combate {
             }
         }
 
-        // 6. Cambiar turno
+        // Devuelve el control al jugador para el siguiente turno
         turnoJugador = true;
     }
 
-    // Método para intentar captura durante el combate
+    /**
+     * Intenta capturar al Pokémon rival utilizando una Pokéball del inventario.
+     * Implementa fórmulas de captura diferenciadas para Pokémon comunes y legendarios,
+     * otorgando recompensas especiales y completando la investigación del Pokédex
+     * en caso de captura exitosa de un legendario.
+     *
+     * @param entrenador Entrenador que está intentando la captura
+     * @param ball Pokéball a utilizar para la captura
+     * @return true si la captura fue exitosa, false en caso contrario
+     */
     public boolean intentarCaptura(Entrenador entrenador, Pokeball ball) {
-        // 1. Intentar gastar el ítem
+        // Verifica que el entrenador tenga la Pokéball en su inventario
         boolean gastado = entrenador.getInventario().removerItem(ball.getNombre(), 1);
 
         if (!gastado) {
@@ -156,28 +209,24 @@ public class Combate {
             return false;
         }
 
-        // 2. Calcular éxito (fórmula especial para legendarios)
+        // Calcula la probabilidad de captura basada en PS restantes y tipo de Pokémon
         double porcentajePs = (double)pokemonRival.getPsActual() / pokemonRival.getPsMaximos();
         double probabilidad;
 
-        // Verificar si es Pokémon legendario
         boolean esLegendario = esPokemonLegendario(pokemonRival.getEspecie().getNombre());
 
         if (esLegendario) {
-            // FÓRMULA MÁS DIFÍCIL PARA LEGENDARIOS
-            // Base más baja (0.1 vs 0.25) y penalización mayor por PS altos
+            // Fórmula más restrictiva para Pokémon legendarios
             probabilidad = (ball.getTasaCaptura() * 0.1) / (porcentajePs * 2.0 + 0.05);
 
-            // Penalización adicional si no está debilitado
             if (porcentajePs > 0.5) {
-                probabilidad *= 0.5; // 50% menos de probabilidad
+                probabilidad *= 0.5;
             }
 
-            // Asegurar límites razonables para legendarios
             probabilidad = Math.max(0.01, Math.min(0.5, probabilidad));
 
         } else {
-            // Fórmula normal para Pokémon comunes
+            // Fórmula estándar para Pokémon comunes
             probabilidad = (ball.getTasaCaptura() * 0.25) / (porcentajePs + 0.1);
         }
 
@@ -186,18 +235,16 @@ public class Combate {
         if (exito) {
             registrarEvento("¡Atrapaste a " + pokemonRival.getNombre() + "!");
 
-            // 3. Si es legendario, mensaje especial
+            // Otorga recompensas especiales por capturar un Pokémon legendario
             if (esLegendario) {
                 registrarEvento("¡¡¡HAS CAPTURADO UN POKÉMON LEGENDARIO!!!");
                 registrarEvento("¡Logro máximo completado!");
 
-                // AUTO-COMPLETAR INVESTIGACIÓN (Nivel 10 inmediato)
                 PokedexEntry entrada = entrenador.getPokedex().getEntrada(
                     pokemonRival.getEspecie().getNombre()
                 );
 
                 if (entrada != null) {
-                    // Forzar nivel 10 de investigación
                     int intentosNecesarios = 10 - entrada.getNivelInvestigacion();
                     for (int i = 0; i < intentosNecesarios; i++) {
                         entrada.registrarVictoriaCombate();
@@ -206,23 +253,18 @@ public class Combate {
                         " ha sido registrado como COMPLETAMENTE INVESTIGADO (Nivel 10)");
                 }
 
-                // Otorgar recompensas especiales
-                entrenador.ganarDinero(10000); // 10,000 de dinero
+                entrenador.ganarDinero(10000);
                 registrarEvento("¡Has obtenido $10,000 como recompensa!");
-
-                // Finalizar el objetivo central de la simulación
                 registrarEvento("¡OBJETIVO PRINCIPAL COMPLETADO!");
             }
 
-            // 4. Crear la instancia para el jugador y añadir al equipo
+            // Convierte el Pokémon rival a una instancia controlable por el jugador
             PokemonJugador nuevo;
 
             if (pokemonRival instanceof PokemonSalvaje) {
-                // ✅ USAR CONVERSIÓN QUE COPIA MOVIMIENTOS
                 PokemonSalvaje salvaje = (PokemonSalvaje) pokemonRival;
                 nuevo = salvaje.convertirAJugador();
 
-                // Mantener nombre personalizado si tenía apodo
                 String nombreRival = pokemonRival.getNombre();
                 String nombreEspecie = pokemonRival.getEspecie().getNombre();
                 if (!nombreRival.equals(nombreEspecie)) {
@@ -230,14 +272,12 @@ public class Combate {
                 }
 
             } else {
-                // Para compatibilidad con Pokémon de entrenadores
                 nuevo = new PokemonJugador(
                     pokemonRival.getEspecie(),
                     pokemonRival.getNombre(),
                     pokemonRival.getNivel()
                 );
 
-                // Copiar movimientos manualmente
                 for (Movimiento movimiento : pokemonRival.getMovimientos()) {
                     Movimiento copia = new Movimiento(
                         movimiento.getNombre(),
@@ -253,13 +293,13 @@ public class Combate {
                 }
             }
 
-            // 5. Añadir al equipo del entrenador
+            // Añade el Pokémon capturado al equipo del entrenador
             boolean añadido = entrenador.agregarPokemon(nuevo);
             if (!añadido) {
                 registrarEvento("¡Pero el equipo estaba lleno!");
             }
 
-            // 6. Registrar captura en la Pokédex
+            // Registra la captura en el Pokédex del entrenador
             entrenador.registrarCapturaPokemon(
                 pokemonRival.getEspecie().getNombre(),
                 "En combate"
@@ -272,19 +312,23 @@ public class Combate {
         } else {
             registrarEvento(pokemonRival.getNombre() + " se liberó...");
 
-            // Mensaje especial para legendarios fallidos
             if (esLegendario) {
                 registrarEvento("¡El poder legendario es demasiado fuerte!");
             }
 
-            turnoJugador = false; // El turno pasa al rival por fallar
+            turnoJugador = false;
             return false;
         }
     }
 
-    // Método auxiliar para detectar Pokémon legendarios
+    /**
+     * Determina si un Pokémon pertenece a la categoría de legendarios
+     * según una lista predefinida de nombres.
+     *
+     * @param nombrePokemon Nombre de la especie del Pokémon a verificar
+     * @return true si el Pokémon es considerado legendario, false en caso contrario
+     */
     private boolean esPokemonLegendario(String nombrePokemon) {
-        // Lista de Pokémon legendarios
         String[] legendarios = {
             "Arceus", "Mewtwo", "Rayquaza", "Groudon", "Kyogre",
             "Dialga", "Palkia", "Giratina", "Lugia", "Ho-Oh",
@@ -300,6 +344,13 @@ public class Combate {
         return false;
     }
 
+    /**
+     * Permite al jugador cambiar su Pokémon activo por otro de su equipo
+     * durante el combate, siempre que no esté debilitado.
+     *
+     * @param nuevoPokemon Pokémon que tomará el lugar en combate
+     * @return Resultado de la operación según el enum ResultadoTurno
+     */
     public ResultadoTurno cambiarPokemon(Pokemon nuevoPokemon) {
         if (combateTerminado) {
             return ResultadoTurno.COMBATE_TERMINADO;
@@ -318,19 +369,22 @@ public class Combate {
             return ResultadoTurno.MOVIMIENTO_INVALIDO;
         }
 
-        // Cambiar Pokémon
         pokemonJugador = nuevoPokemon;
         registrarEvento("¡Adelante " + pokemonJugador.getNombre() + "!");
 
-        // Cambiar turno
         turnoJugador = false;
 
         return ResultadoTurno.EXITO;
     }
 
-    // Método para intentar huir
+    /**
+     * Intenta que el jugador huya del combate con una probabilidad basada
+     * en la comparación de velocidad entre los Pokémon. Si falla, el rival
+     * ataca inmediatamente.
+     *
+     * @return true si la huida fue exitosa, false en caso contrario
+     */
     public boolean intentarHuir() {
-        // Fórmula simple basada en velocidad
         double probabilidad = (double) pokemonJugador.getVelocidad() /
             (pokemonJugador.getVelocidad() + pokemonRival.getVelocidad());
 
@@ -342,7 +396,6 @@ public class Combate {
             motivoFin = "huida";
         } else {
             registrarEvento("¡No has podido huir!");
-            // Si fallas, el rival ataca
             turnoJugador = false;
             ejecutarTurnoRival();
         }
@@ -350,29 +403,26 @@ public class Combate {
         return exito;
     }
 
-    // Método para registrar derrota por equipo completo
-    public void registrarDerrotaCompleta() {
-        combateTerminado = true;
-        motivoFin = "derrota";
-    }
-
+    /**
+     * Calcula y otorga las recompensas por victoria en combate, incluyendo
+     * experiencia para el Pokémon, recursos y registro en el Pokédex.
+     *
+     * @param entrenador Entrenador que recibe las recompensas
+     */
     public void otorgarRecompensasVictoria(Entrenador entrenador) {
         if (motivoFin == null || !motivoFin.equals("victoria")) {
             return;
         }
 
-        // Calcular recompensas
         SistemaRecompensas.RecompensaCombate recompensa =
             SistemaRecompensas.calcularRecompensaVictoria(pokemonJugador, pokemonRival);
 
-        // 1. Dar experiencia al Pokémon que luchó
         if (pokemonJugador instanceof PokemonJugador) {
             PokemonJugador pj = (PokemonJugador) pokemonJugador;
             pj.ganarExperiencia(recompensa.experiencia * 2);
             registrarEvento(pj.getApodo() + " ganó " + recompensa.experiencia + " puntos de experiencia!");
         }
 
-        // 2. Dar recurso
         if (recompensa.recursoGanado != null && recompensa.cantidadRecurso > 0) {
             Recurso recurso = new Recurso(recompensa.recursoGanado, recompensa.recursoGanado);
             boolean agregado = entrenador.getInventario().agregarItem(recurso, recompensa.cantidadRecurso);
@@ -381,12 +431,16 @@ public class Combate {
             }
         }
 
-        // 3. Registrar victoria en Pokédex
         entrenador.registrarVictoriaContraPokemon(pokemonRival.getEspecie().getNombre());
     }
 
+    /**
+     * Aplica penalizaciones por derrota en combate, incluyendo la posible
+     * pérdida de recursos y el debilitamiento de todo el equipo.
+     *
+     * @param entrenador Entrenador que sufre las penalizaciones
+     */
     public void aplicarPenalizacionDerrota(Entrenador entrenador) {
-        // 30% de chance de perder un recurso aleatorio
         Random rand = new Random();
         if (rand.nextDouble() < 0.3) {
             String[] recursosDisponibles = {"Planta", "Guijarro", "Baya", "Metal"};
@@ -397,7 +451,6 @@ public class Combate {
             }
         }
 
-        // Todos los Pokémon del equipo quedan debilitados
         for (PokemonJugador p : entrenador.getEquipo()) {
             if (!p.estaDebilitado()) {
                 p.recibirDaño(p.getPsActual());
@@ -406,6 +459,12 @@ public class Combate {
         registrarEvento("Todos tus Pokémon quedaron debilitados...");
     }
 
+    /**
+     * Finaliza el combate por derrota completa cuando todos los Pokémon
+     * del equipo del jugador han sido debilitados.
+     *
+     * @param entrenador Entrenador que ha sido derrotado
+     */
     public void registrarDerrotaCompleta(Entrenador entrenador) {
         combateTerminado = true;
         motivoFin = "derrota";
@@ -414,14 +473,43 @@ public class Combate {
         aplicarPenalizacionDerrota(entrenador);
     }
 
-    // Getters
+    /**
+     * Añade un evento al historial del combate y lo imprime en la consola
+     * para propósitos de depuración.
+     *
+     * @param evento Descripción textual del evento ocurrido
+     */
+    private void registrarEvento(String evento) {
+        historial.add(evento);
+        System.out.println("[Combate] " + evento);
+    }
+
+    // Métodos de acceso para obtener información del estado actual del combate
+
+    /** @return Pokémon del jugador actualmente en combate */
     public Pokemon getPokemonJugador() { return pokemonJugador; }
+
+    /** @return Pokémon rival actualmente en combate */
     public Pokemon getPokemonRival() { return pokemonRival; }
+
+    /** @return true si es el turno del jugador, false si es del rival */
     public boolean isTurnoJugador() { return turnoJugador; }
+
+    /** @return true si el combate ha finalizado, false en caso contrario */
     public boolean isCombateTerminado() { return combateTerminado; }
+
+    /** @return Copia del historial de eventos del combate */
     public List<String> getHistorial() { return new ArrayList<>(historial); }
+
+    /** @return Motivo por el cual terminó el combate o null si no ha terminado */
     public String getMotivoFin() { return motivoFin; }
 
+    /**
+     * Determina qué Pokémon resultó ganador del combate basándose en
+     * qué Pokémon quedó debilitado.
+     *
+     * @return Pokémon ganador o null si el combate no ha terminado o terminó sin debilitación
+     */
     public Pokemon getGanador() {
         if (!combateTerminado) return null;
         if (pokemonJugador.estaDebilitado()) return pokemonRival;
@@ -429,15 +517,16 @@ public class Combate {
         return null;
     }
 
+    /**
+     * Determina qué Pokémon resultó perdedor del combate basándose en
+     * qué Pokémon quedó debilitado.
+     *
+     * @return Pokémon perdedor o null si el combate no ha terminado o terminó sin debilitación
+     */
     public Pokemon getPerdedor() {
         if (!combateTerminado) return null;
         if (pokemonJugador.estaDebilitado()) return pokemonJugador;
         if (pokemonRival.estaDebilitado()) return pokemonRival;
         return null;
-    }
-
-    private void registrarEvento(String evento) {
-        historial.add(evento);
-        System.out.println("[Combate] " + evento);
     }
 }

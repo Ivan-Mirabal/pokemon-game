@@ -9,17 +9,9 @@
 			"vecesVisto": 1,
 			"vecesCapturado": 1,
 			"primerAvistamientoUbicacion": "Regalo Inicial",
-			"primerAvistamientoFecha": "21/01/2026 22:03",
+			"primerAvistamientoFecha": "22/01/2026 09:15",
 			"primeraCapturaUbicacion": "Regalo Inicial",
-			"primeraCapturaFecha": "21/01/2026 22:03"
-		},
-		"Riolu": {
-			"class": "com.pokemon.game.pokedex.PokedexEntry",
-			"especie": "Riolu",
-			"visto": true,
-			"vecesVisto": 2,
-			"primerAvistamientoUbicacion": "Mapa Centro",
-			"primerAvistamientoFecha": "21/01/2026 22:04"
+			"primeraCapturaFecha": "22/01/2026 09:15"
 		}
 	}
 },
@@ -28,7 +20,7 @@
 		"especie": "Charmander",
 		"apodo": "Charmander",
 		"nivel": 5,
-		"psActual": 9,
+		"psActual": 18,
 		"psMaximos": 18,
 		"experiencia": 0
 	}
@@ -40,11 +32,11 @@
 	},
 	{
 		"nombreItem": "Poción",
-		"cantidad": 2
+		"cantidad": 3
 	},
 	{
 		"nombreItem": "Revivir",
-		"cantidad": 1
+		"cantidad": 3
 	},
 	{
 		"nombreItem": "Planta",
@@ -60,7 +52,7 @@
 	},
 	{
 		"nombreItem": "Metal",
-		"cantidad": 6
+		"cantidad": 5
 	}
 ]
 }

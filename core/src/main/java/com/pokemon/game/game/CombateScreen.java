@@ -13,13 +13,27 @@ import com.pokemon.game.item.*;
 import java.util.*;
 import com.badlogic.gdx.Input.Keys;
 
+/**
+ * Pantalla que gestiona toda la interfaz gráfica y lógica de combate Pokémon por turnos.
+ * Maneja la visualización de sprites, menús de selección, barras de salud, mensajes
+ * de combate y la interacción entre el jugador y el sistema de combate subyacente.
+ * Implementa un sistema de estados complejo para controlar el flujo del combate.
+ */
 public class CombateScreen implements Screen {
 
-    // Referencias
+    /** Referencia a la clase principal del juego para coordinar cambios de pantalla */
     private final PokemonGame game;
+
+    /** Pantalla de juego principal a la que se retorna después del combate */
     private final GameScreen gameScreen;
+
+    /** Motor de lógica de combate que gestiona turnos, daños y resultados */
     private final Combate combate;
+
+    /** Jugador que participa en el combate para acceder a equipo e inventario */
     private final Player player;
+
+    /** Lote de sprites utilizado para renderizar todos los elementos gráficos de la pantalla */
     private SpriteBatch batch;
 
     // Texturas y fuentes
@@ -31,18 +45,37 @@ public class CombateScreen implements Screen {
     private Texture spriteJugador;
     private Texture spriteRival;
 
-    // Estados del menú
+    /**
+     * Estados posibles del sistema de menús del combate que determinan qué interfaz
+     * se muestra al jugador y qué tipo de entrada se procesa en cada momento.
+     */
     enum EstadoMenu {
+        /** Animación inicial de entrada cuando comienza el combate */
         ANIMACION_ENTRADA,
+
+        /** Menú principal con las cuatro opciones básicas de acción */
         MENU_PRINCIPAL,
+
+        /** Menú de selección de movimientos entre los cuatro disponibles */
         MENU_MOVIMIENTOS,
+
+        /** Menú para cambiar al Pokémon activo por otro del equipo */
         MENU_POKEMON,
+
+        /** Menú para usar objetos del inventario durante el combate */
         MENU_OBJETOS,
+
+        /** Muestra mensajes de texto sobre eventos del combate */
         MOSTRANDO_MENSAJE,
+
+        /** Estado forzado cuando el Pokémon actual es debilitado */
         CAMBIO_FORZADO,
+
+        /** Pantalla final que muestra el resultado del combate */
         FIN_COMBATE
     }
 
+    /** Estado actual del sistema de menús que controla el flujo de la interfaz */
     private EstadoMenu estadoActual;
 
     // Variables de selección
@@ -94,6 +127,15 @@ public class CombateScreen implements Screen {
     private float shakeIntensity = 0;
     private float transicionAlpha = 0;
 
+    /**
+     * Construye una nueva pantalla de combate inicializando todos los sistemas
+     * gráficos, cargando recursos y configurando el estado inicial del combate.
+     *
+     * @param game Referencia principal al juego para cambios de pantalla
+     * @param gameScreen Pantalla de juego a la que retornar después del combate
+     * @param combate Motor de lógica de combate ya inicializado
+     * @param player Jugador que participa en el combate
+     */
     public CombateScreen(PokemonGame game, GameScreen gameScreen, Combate combate, Player player) {
         this.game = game;
         this.gameScreen = gameScreen;
@@ -109,7 +151,7 @@ public class CombateScreen implements Screen {
         this.seleccionObjeto = 0;
         this.mensajes = new ArrayList<>();
         this.indiceMensaje = 0;
-        this.ultimoIndiceHistorial = 0; // ✅ Inicializar
+        this.ultimoIndiceHistorial = 0;
 
         mensajes.add("¡" + combate.getPokemonRival().getNombre() + " salvaje apareció!");
         indiceMensaje = 0;
@@ -141,6 +183,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Inicializa todos los recursos gráficos básicos necesarios para renderizar
+     * la pantalla de combate, incluyendo texturas, fuentes y fondos.
+     */
     private void inicializarRecursos() {
         // Textura blanca para dibujar formas
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
@@ -161,6 +207,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Configura el procesador de entrada personalizado que captura las teclas
+     * presionadas y las delega a los métodos de manejo según el estado actual.
+     */
     private void configurarInput() {
         inputProcessor = new InputAdapter() {
             @Override
@@ -170,6 +220,13 @@ public class CombateScreen implements Screen {
         };
     }
 
+    /**
+     * Procesa una tecla presionada delegando al método correspondiente según
+     * el estado actual del sistema de menús del combate.
+     *
+     * @param keycode Código de la tecla presionada según la clase Keys de LibGDX
+     * @return true si la tecla fue procesada, false si se ignoró
+     */
     private boolean procesarTecla(int keycode) {
         switch (estadoActual) {
             case MENU_PRINCIPAL:
@@ -197,38 +254,41 @@ public class CombateScreen implements Screen {
         return false;
     }
 
+    /**
+     * Maneja la entrada del teclado cuando el menú principal está activo,
+     * permitiendo navegar entre las cuatro opciones y seleccionar una.
+     *
+     * @param keycode Código de la tecla presionada
+     * @return true si la tecla fue procesada, false si se ignoró
+     */
     private boolean manejarMenuPrincipal(int keycode) {
         switch (keycode) {
             case Keys.UP:
-                // Mover hacia arriba cíclicamente
                 if (seleccionPrincipal == 0 || seleccionPrincipal == 1) {
-                    seleccionPrincipal += 2; // 0→2, 1→3
+                    seleccionPrincipal += 2;
                 } else {
-                    seleccionPrincipal -= 2; // 2→0, 3→1
+                    seleccionPrincipal -= 2;
                 }
                 return true;
             case Keys.DOWN:
-                // Mover hacia abajo cíclicamente
                 if (seleccionPrincipal == 2 || seleccionPrincipal == 3) {
-                    seleccionPrincipal -= 2; // 2→0, 3→1
+                    seleccionPrincipal -= 2;
                 } else {
-                    seleccionPrincipal += 2; // 0→2, 1→3
+                    seleccionPrincipal += 2;
                 }
                 return true;
             case Keys.LEFT:
-                // Mover hacia izquierda cíclicamente
                 if (seleccionPrincipal == 0 || seleccionPrincipal == 2) {
-                    seleccionPrincipal += 1; // 0→1, 2→3
+                    seleccionPrincipal += 1;
                 } else {
-                    seleccionPrincipal -= 1; // 1→0, 3→2
+                    seleccionPrincipal -= 1;
                 }
                 return true;
             case Keys.RIGHT:
-                // Mover hacia derecha cíclicamente
                 if (seleccionPrincipal == 1 || seleccionPrincipal == 3) {
-                    seleccionPrincipal -= 1; // 1→0, 3→2
+                    seleccionPrincipal -= 1;
                 } else {
-                    seleccionPrincipal += 1; // 0→1, 2→3
+                    seleccionPrincipal += 1;
                 }
                 return true;
             case Keys.ENTER:
@@ -256,7 +316,6 @@ public class CombateScreen implements Screen {
                 ejecutarAccionMenuPrincipal();
                 return true;
             case Keys.W:
-                // Tecla W también para arriba
                 if (seleccionPrincipal == 0 || seleccionPrincipal == 1) {
                     seleccionPrincipal += 2;
                 } else {
@@ -264,7 +323,6 @@ public class CombateScreen implements Screen {
                 }
                 return true;
             case Keys.S:
-                // Tecla S también para abajo
                 if (seleccionPrincipal == 2 || seleccionPrincipal == 3) {
                     seleccionPrincipal -= 2;
                 } else {
@@ -272,7 +330,6 @@ public class CombateScreen implements Screen {
                 }
                 return true;
             case Keys.A:
-                // Tecla A también para izquierda
                 if (seleccionPrincipal == 0 || seleccionPrincipal == 2) {
                     seleccionPrincipal += 1;
                 } else {
@@ -280,7 +337,6 @@ public class CombateScreen implements Screen {
                 }
                 return true;
             case Keys.D:
-                // Tecla D también para derecha
                 if (seleccionPrincipal == 1 || seleccionPrincipal == 3) {
                     seleccionPrincipal -= 1;
                 } else {
@@ -291,28 +347,39 @@ public class CombateScreen implements Screen {
         return false;
     }
 
+    /**
+     * Ejecuta la acción correspondiente a la opción seleccionada en el menú
+     * principal, cambiando al estado de menú apropiado para continuar.
+     */
     private void ejecutarAccionMenuPrincipal() {
         switch (seleccionPrincipal) {
-            case 0: // FIGHT
+            case 0:
                 estadoActual = EstadoMenu.MENU_MOVIMIENTOS;
                 seleccionMovimiento = 0;
                 break;
-            case 1: // BAG
+            case 1:
                 estadoActual = EstadoMenu.MENU_OBJETOS;
                 seleccionObjeto = 0;
                 break;
-            case 2: // Opción POKéMON
-                modoRevivir = false; // Asegurarnos de que está apagado
-                actualizarEquipoVisible(); // Solo mostrará los vivos
+            case 2:
+                modoRevivir = false;
+                actualizarEquipoVisible();
                 estadoActual = EstadoMenu.MENU_POKEMON;
                 seleccionPokemon = 0;
                 break;
-            case 3: // RUN
+            case 3:
                 intentarHuir();
                 break;
         }
     }
 
+    /**
+     * Maneja la entrada del teclado cuando el menú de movimientos está activo,
+     * permitiendo navegar entre los movimientos disponibles y seleccionar uno.
+     *
+     * @param keycode Código de la tecla presionada
+     * @return true si la tecla fue procesada, false si se ignoró
+     */
     private boolean manejarMenuMovimientos(int keycode) {
         List<Movimiento> movimientos = combate.getPokemonJugador().getMovimientos();
         int totalMovimientos = movimientos.size();
@@ -392,6 +459,13 @@ public class CombateScreen implements Screen {
         return false;
     }
 
+    /**
+     * Maneja la entrada del teclado cuando el menú de Pokémon está activo,
+     * permitiendo navegar entre los Pokémon disponibles y seleccionar uno.
+     *
+     * @param keycode Código de la tecla presionada
+     * @return true si la tecla fue procesada, false si se ignoró
+     */
     private boolean manejarMenuPokemon(int keycode) {
         switch (keycode) {
             case Keys.UP:
@@ -413,11 +487,9 @@ public class CombateScreen implements Screen {
 
             case Keys.ENTER:
             case Keys.SPACE:
-                // --- NUEVA LÓGICA: MODO REVIVIR ---
                 if (modoRevivir) {
-                    ejecutarAccionRevivir(); // Lo movemos a un método aparte para que quede limpio
+                    ejecutarAccionRevivir();
                 }
-                // --- LÓGICA ORIGINAL ---
                 else if (estadoActual == EstadoMenu.CAMBIO_FORZADO) {
                     cambiarPokemonForzado();
                 } else {
@@ -429,7 +501,7 @@ public class CombateScreen implements Screen {
             case Keys.ESCAPE:
                 if (modoRevivir) {
                     modoRevivir = false;
-                    actualizarEquipoVisible(); // Volver a filtrar para el menú normal
+                    actualizarEquipoVisible();
                     estadoActual = EstadoMenu.MENU_OBJETOS;
                 } else if (estadoActual != EstadoMenu.CAMBIO_FORZADO) {
                     estadoActual = EstadoMenu.MENU_PRINCIPAL;
@@ -439,8 +511,14 @@ public class CombateScreen implements Screen {
         return false;
     }
 
+    /**
+     * Maneja la entrada del teclado cuando el menú de objetos está activo,
+     * permitiendo navegar entre los objetos disponibles y seleccionar uno.
+     *
+     * @param keycode Código de la tecla presionada
+     * @return true si la tecla fue procesada, false si se ignoró
+     */
     private boolean manejarMenuObjetos(int keycode) {
-        // Obtener lista de objetos de combate
         List<Ranura> objetosCombate = new ArrayList<>();
         for (Ranura ranura : player.getInventario().getRanuras()) {
             Item item = ranura.getItem();
@@ -449,11 +527,10 @@ public class CombateScreen implements Screen {
             }
         }
 
-        int totalObjetos = Math.min(objetosCombate.size(), 6); // Máximo 6 slots visibles
+        int totalObjetos = Math.min(objetosCombate.size(), 6);
 
         switch (keycode) {
             case Keys.UP:
-                // Mover hacia arriba en la cuadrícula 2x3
                 if (seleccionObjeto >= 2) {
                     int nuevaSeleccion = seleccionObjeto - 2;
                     if (nuevaSeleccion < totalObjetos) {
@@ -462,19 +539,16 @@ public class CombateScreen implements Screen {
                 }
                 return true;
             case Keys.DOWN:
-                // Mover hacia abajo en la cuadrícula 2x3
                 if (seleccionObjeto < 4 && seleccionObjeto + 2 < totalObjetos) {
                     seleccionObjeto += 2;
                 }
                 return true;
             case Keys.LEFT:
-                // Mover hacia izquierda
                 if (seleccionObjeto % 2 == 1 && seleccionObjeto - 1 < totalObjetos) {
                     seleccionObjeto--;
                 }
                 return true;
             case Keys.RIGHT:
-                // Mover hacia derecha
                 if (seleccionObjeto % 2 == 0 && seleccionObjeto + 1 < totalObjetos) {
                     seleccionObjeto++;
                 }
@@ -535,6 +609,10 @@ public class CombateScreen implements Screen {
         return false;
     }
 
+    /**
+     * Carga los sprites gráficos de los Pokémon participantes en el combate
+     * desde el sistema de archivos, creando placeholders si no se encuentran.
+     */
     private void cargarSpritesCombate() {
         String nombreJugador = combate.getPokemonJugador().getNombre().toLowerCase();
         String nombreRival = combate.getPokemonRival().getNombre().toLowerCase();
@@ -558,6 +636,14 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Crea una textura de placeholder para un Pokémon cuando no se encuentra
+     * su sprite original, utilizando un círculo de color con características
+     * faciales básicas.
+     *
+     * @param color Color base para el sprite de placeholder
+     * @return Textura generada como marcador de posición
+     */
     private Texture crearSpritePlaceholder(Color color) {
         Pixmap pixmap = new Pixmap(SPRITE_SIZE, SPRITE_SIZE, Pixmap.Format.RGBA8888);
         pixmap.setColor(color);
@@ -573,6 +659,12 @@ public class CombateScreen implements Screen {
         return texture;
     }
 
+    /**
+     * Renderiza cada frame de la pantalla de combate, actualizando el estado
+     * interno y dibujando todos los elementos gráficos según el estado actual.
+     *
+     * @param delta Tiempo transcurrido en segundos desde el último frame
+     */
     @Override
     public void render(float delta) {
         if (destruido) return;
@@ -580,11 +672,24 @@ public class CombateScreen implements Screen {
         dibujar();
     }
 
+    /**
+     * Activa un efecto de temblor en pantalla para enfatizar impactos fuertes
+     * o eventos importantes durante el combate.
+     *
+     * @param intensidad Fuerza del efecto de temblor en píxeles
+     * @param duracion Duración del efecto en segundos
+     */
     public void activarShake(float intensidad, float duracion) {
         shakeTime = duracion;
         shakeIntensity = intensidad;
     }
 
+    /**
+     * Actualiza el estado interno de la pantalla de combate, incluyendo
+     * temporizadores de animación y transiciones entre estados.
+     *
+     * @param delta Tiempo transcurrido en segundos desde el último frame
+     */
     private void actualizar(float delta) {
         switch (estadoActual) {
             case ANIMACION_ENTRADA:
@@ -596,6 +701,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Dibuja todos los elementos gráficos de la pantalla de combate según
+     * el estado actual, incluyendo Pokémon, barras de salud y menús.
+     */
     private void dibujar() {
         ScreenUtils.clear(COLOR_FONDO);
         batch.begin();
@@ -665,6 +774,15 @@ public class CombateScreen implements Screen {
         batch.end();
     }
 
+    /**
+     * Dibuja una barra de salud visual para un Pokémon específico en la
+     * posición indicada, con colores que varían según el porcentaje de salud.
+     *
+     * @param pokemon Pokémon cuya barra de salud se va a dibujar
+     * @param x Posición horizontal en píxeles donde dibujar la barra
+     * @param y Posición vertical en píxeles donde dibujar la barra
+     * @param esJugador true si es el Pokémon del jugador, false si es rival
+     */
     private void dibujarBarraSalud(Pokemon pokemon, float x, float y, boolean esJugador) {
         float anchoBarra = 180;
         float altoBarra = 12;
@@ -679,11 +797,11 @@ public class CombateScreen implements Screen {
         // Color de la barra según salud
         Color colorBarra;
         if (porcentaje > 0.5) {
-            colorBarra = new Color(0.4f, 0.8f, 0.2f, 1); // Verde
+            colorBarra = new Color(0.4f, 0.8f, 0.2f, 1);
         } else if (porcentaje > 0.2) {
-            colorBarra = new Color(1f, 0.8f, 0.2f, 1); // Amarillo
+            colorBarra = new Color(1f, 0.8f, 0.2f, 1);
         } else {
-            colorBarra = new Color(0.9f, 0.2f, 0.2f, 1); // Rojo
+            colorBarra = new Color(0.9f, 0.2f, 0.2f, 1);
         }
 
         // Barra de salud
@@ -712,6 +830,10 @@ public class CombateScreen implements Screen {
         font.draw(batch, "Nv." + pokemon.getNivel(), x + anchoBarra - 40, y + altoBarra + 15);
     }
 
+    /**
+     * Dibuja el menú principal de combate con las cuatro opciones básicas
+     * organizadas en una cuadrícula 2x2 con resaltado de selección.
+     */
     private void dibujarMenuPrincipal() {
         int screenWidth = Gdx.graphics.getWidth();
         int screenHeight = Gdx.graphics.getHeight();
@@ -736,21 +858,19 @@ public class CombateScreen implements Screen {
 
         // Posiciones de las 4 opciones en cuadrícula 2x2
         float[][] posiciones = {
-            {0, panelY + cellHeight},  // Abajo izquierda: LUCHAR (0)
-            {cellWidth, panelY + cellHeight}, // Abajo derecha: BOLSA (1)
-            {0, panelY},               // Arriba izquierda: POKéMON (2)
-            {cellWidth, panelY}        // Arriba derecha: HUIR (3)
+            {0, panelY + cellHeight},
+            {cellWidth, panelY + cellHeight},
+            {0, panelY},
+            {cellWidth, panelY}
         };
 
         // Dibujar líneas divisorias
         batch.setColor(new Color(0.3f, 0.3f, 0.4f, 1));
-        // Línea vertical central
         batch.draw(whitePixel, cellWidth - 2, panelY, 4, panelAlto);
-        // Línea horizontal central
         batch.draw(whitePixel, 0, panelY + cellHeight - 2, screenWidth, 4);
         batch.setColor(Color.WHITE);
 
-        // Opciones del menú (solo nombres)
+        // Opciones del menú
         String[] opciones = {"LUCHAR", "BOLSA", "POKéMON", "HUIR"};
 
         // Fuente más grande para mejor visibilidad
@@ -768,26 +888,24 @@ public class CombateScreen implements Screen {
 
                 // Borde de selección
                 batch.setColor(new Color(0.4f, 0.6f, 1.0f, 1));
-                batch.draw(whitePixel, x, y, cellWidth, 3); // Superior
-                batch.draw(whitePixel, x, y + cellHeight, cellWidth, 3); // Inferior
-                batch.draw(whitePixel, x, y, 3, cellHeight); // Izquierdo
-                batch.draw(whitePixel, x + cellWidth, y, 3, cellHeight); // Derecho
+                batch.draw(whitePixel, x, y, cellWidth, 3);
+                batch.draw(whitePixel, x, y + cellHeight, cellWidth, 3);
+                batch.draw(whitePixel, x, y, 3, cellHeight);
+                batch.draw(whitePixel, x + cellWidth, y, 3, cellHeight);
                 batch.setColor(Color.WHITE);
             }
 
-            // Dibujar opción (centrada)
+            // Dibujar opción
             font.setColor(esSeleccionada ? Color.YELLOW : new Color(0.9f, 0.9f, 1f, 1));
 
             String opcion = opciones[i];
-
-            // Calcular centro para el texto
             GlyphLayout layout = new GlyphLayout(font, opcion);
             float textoX = x + (cellWidth - layout.width) / 2;
             float textoY = y + (cellHeight + layout.height) / 2;
 
             font.draw(batch, opcion, textoX, textoY);
 
-            // Número de tecla rápida (1-4) en esquina
+            // Número de tecla rápida
             font.getData().setScale(1.0f);
             font.setColor(new Color(0.5f, 0.5f, 0.7f, 0.6f));
             font.draw(batch, String.valueOf(i + 1), x + 10, y + cellHeight - 10);
@@ -796,9 +914,12 @@ public class CombateScreen implements Screen {
 
         // Restaurar tamaño de fuente
         font.getData().setScale(1.0f);
-
     }
 
+    /**
+     * Dibuja el menú de movimientos mostrando los cuatro movimientos del
+     * Pokémon activo con información detallada de cada uno.
+     */
     private void dibujarMenuMovimientos() {
         List<Movimiento> movimientos = combate.getPokemonJugador().getMovimientos();
 
@@ -911,24 +1032,28 @@ public class CombateScreen implements Screen {
         font.getData().setScale(1.0f);
     }
 
+    /**
+     * Dibuja el menú de cambio de Pokémon mostrando todos los Pokémon no
+     * debilitados del equipo con información detallada de cada uno.
+     */
     private void dibujarMenuPokemon() {
         int screenWidth = Gdx.graphics.getWidth();
         int screenHeight = Gdx.graphics.getHeight();
 
-        // 1. FONDO SEMI-TRANSPARENTE OSCURO
+        // Fondo semi-transparente oscuro
         batch.setColor(new Color(0f, 0f, 0f, 0.85f));
         batch.draw(whitePixel, 0, 0, screenWidth, screenHeight);
         batch.setColor(Color.WHITE);
 
-        // 2. CABECERA MÁS ARRIBA - TÍTULO CENTRADO
-        float headerY = screenHeight - 60; // ¡Más arriba! (antes era 80)
+        // Cabecera con título
+        float headerY = screenHeight - 60;
 
         // Fondo de cabecera
         batch.setColor(new Color(0.1f, 0.1f, 0.2f, 0.9f));
         batch.draw(whitePixel, 0, headerY - 40, screenWidth, 70);
         batch.setColor(Color.WHITE);
 
-        // TÍTULO SEGÚN ESTADO
+        // Título según estado
         String titulo;
         Color colorTitulo;
 
@@ -940,18 +1065,17 @@ public class CombateScreen implements Screen {
             colorTitulo = new Color(0.4f, 0.7f, 1.0f, 1);
         }
 
-        // Título principal (centrado y grande)
+        // Título principal
         font.getData().setScale(2.0f);
         font.setColor(colorTitulo);
 
-        // Centrar texto
         GlyphLayout tituloLayout = new GlyphLayout(font, titulo);
         float tituloX = (screenWidth - tituloLayout.width) / 2;
         float tituloY = headerY;
         font.draw(batch, titulo, tituloX, tituloY);
         font.getData().setScale(1.0f);
 
-        // Subtítulo (centrado)
+        // Subtítulo
         String subtitulo;
         if (estadoActual == EstadoMenu.CAMBIO_FORZADO) {
             subtitulo = "SELECCIONA OTRO POKÉMON PARA CONTINUAR";
@@ -965,7 +1089,7 @@ public class CombateScreen implements Screen {
         float subtituloY = headerY - 25;
         font.draw(batch, subtitulo, subtituloX, subtituloY);
 
-        // 3. INFORMACIÓN DEL POKÉMON ACTUAL (centrada y más compacta)
+        // Información del Pokémon actual
         Pokemon actual = combate.getPokemonJugador();
         font.setColor(new Color(0.9f, 0.9f, 0.5f, 1));
         String actualTexto = "Actual: " + actual.getApodo() + " (Nv. " + actual.getNivel() + ")";
@@ -974,8 +1098,8 @@ public class CombateScreen implements Screen {
         float actualY = headerY - 45;
         font.draw(batch, actualTexto, actualX, actualY);
 
-        // 4. DISEÑO DE CUADRÍCULA 2x3 - BAJAR LOS RECUADROS MÁS
-        float startY = headerY - 175; // Bajar más los recuadros
+        // Diseño de cuadrícula 2x3
+        float startY = headerY - 175;
 
         float boxWidth = 320;
         float boxHeight = 100;
@@ -986,18 +1110,17 @@ public class CombateScreen implements Screen {
         float totalWidth = (2 * boxWidth) + horizontalSpacing;
         float gridStartX = (screenWidth - totalWidth) / 2;
 
-        // 5. POSICIONES PARA 2 COLUMNAS, 3 FILAS
-        // Fila 0 (arriba)
+        // Posiciones para 2 columnas, 3 filas
         float[][] positions = {
-            {gridStartX, startY},                              // Columna 0, Fila 0
-            {gridStartX + boxWidth + horizontalSpacing, startY}, // Columna 1, Fila 0
-            {gridStartX, startY - boxHeight - verticalSpacing},   // Columna 0, Fila 1
-            {gridStartX + boxWidth + horizontalSpacing, startY - boxHeight - verticalSpacing}, // Columna 1, Fila 1
-            {gridStartX, startY - 2 * (boxHeight + verticalSpacing)}, // Columna 0, Fila 2
-            {gridStartX + boxWidth + horizontalSpacing, startY - 2 * (boxHeight + verticalSpacing)} // Columna 1, Fila 2
+            {gridStartX, startY},
+            {gridStartX + boxWidth + horizontalSpacing, startY},
+            {gridStartX, startY - boxHeight - verticalSpacing},
+            {gridStartX + boxWidth + horizontalSpacing, startY - boxHeight - verticalSpacing},
+            {gridStartX, startY - 2 * (boxHeight + verticalSpacing)},
+            {gridStartX + boxWidth + horizontalSpacing, startY - 2 * (boxHeight + verticalSpacing)}
         };
 
-        // 6. DIBUJAR LOS 6 SLOTS
+        // Dibujar los 6 slots
         for (int slotIndex = 0; slotIndex < 6; slotIndex++) {
             float x = positions[slotIndex][0];
             float y = positions[slotIndex][1];
@@ -1006,18 +1129,18 @@ public class CombateScreen implements Screen {
             boolean esSeleccionado = (slotIndex == seleccionPokemon);
             boolean esActual = tienePokemon && (equipoVisible.get(slotIndex) == actual);
 
-            // 7. DIBUJAR CUADRO DEL SLOT
+            // Dibujar cuadro del slot
             Color colorFondo;
             Color colorBorde;
 
             if (esActual) {
-                colorFondo = new Color(0.3f, 0.3f, 0.1f, 0.8f); // Amarillo oscuro para actual
+                colorFondo = new Color(0.3f, 0.3f, 0.1f, 0.8f);
                 colorBorde = new Color(0.9f, 0.9f, 0.3f, 1);
             } else if (esSeleccionado && tienePokemon) {
-                colorFondo = new Color(0.2f, 0.4f, 0.8f, 0.8f); // Azul para seleccionado
+                colorFondo = new Color(0.2f, 0.4f, 0.8f, 0.8f);
                 colorBorde = new Color(0.4f, 0.6f, 1.0f, 1);
             } else {
-                colorFondo = new Color(0.15f, 0.15f, 0.2f, 0.8f); // Normal
+                colorFondo = new Color(0.15f, 0.15f, 0.2f, 0.8f);
                 colorBorde = new Color(0.4f, 0.4f, 0.5f, 1);
             }
 
@@ -1027,39 +1150,37 @@ public class CombateScreen implements Screen {
 
             // Borde del cuadro
             batch.setColor(colorBorde);
-            batch.draw(whitePixel, x, y, boxWidth, 3); // Superior
-            batch.draw(whitePixel, x, y + boxHeight, boxWidth, 3); // Inferior
-            batch.draw(whitePixel, x, y, 3, boxHeight); // Izquierdo
-            batch.draw(whitePixel, x + boxWidth, y, 3, boxHeight); // Derecho
+            batch.draw(whitePixel, x, y, boxWidth, 3);
+            batch.draw(whitePixel, x, y + boxHeight, boxWidth, 3);
+            batch.draw(whitePixel, x, y, 3, boxHeight);
+            batch.draw(whitePixel, x + boxWidth, y, 3, boxHeight);
             batch.setColor(Color.WHITE);
 
-            // 8. DIBUJAR POKÉMON SI EXISTE
+            // Dibujar Pokémon si existe
             if (tienePokemon) {
                 PokemonJugador p = equipoVisible.get(slotIndex);
 
-                // SPRITE (56x56) - lado izquierdo
+                // SPRITE (56x56)
                 float spriteX = x + 10;
                 float spriteY = y + (boxHeight - 56) / 2;
 
                 if (p.getSprite() != null) {
                     batch.draw(p.getSprite(), spriteX, spriteY, 56, 56);
                 } else {
-                    // Placeholder color por tipo
                     batch.setColor(getColorPorTipo(p.getTipoPrimario()));
                     batch.draw(whitePixel, spriteX, spriteY, 56, 56);
                     batch.setColor(Color.WHITE);
 
-                    // Letra inicial
                     font.setColor(Color.WHITE);
                     String inicial = p.getNombre().substring(0, 1).toUpperCase();
                     font.draw(batch, inicial, spriteX + 18, spriteY + 35);
                 }
 
-                // 9. INFORMACIÓN A LA DERECHA DEL SPRITE
+                // Información a la derecha del sprite
                 float infoX = x + 80;
                 float infoTopY = y + boxHeight - 15;
 
-                // NOMBRE (con indicador de actual si es necesario)
+                // NOMBRE
                 String nombreTexto = p.getApodo();
                 if (esActual) {
                     nombreTexto += " (ACTUAL)";
@@ -1071,11 +1192,11 @@ public class CombateScreen implements Screen {
                 }
                 font.draw(batch, nombreTexto, infoX, infoTopY);
 
-                // NIVEL (derecha)
+                // NIVEL
                 font.setColor(new Color(0.8f, 0.8f, 0.9f, 1));
                 font.draw(batch, "Nv." + p.getNivel(), x + boxWidth - 60, infoTopY);
 
-                // TIPO(S) - línea media
+                // TIPO(S)
                 float tipoY = y + boxHeight - 40;
                 font.setColor(getColorPorTipo(p.getTipoPrimario()));
                 String tipoTexto = p.getTipoPrimario().toString();
@@ -1084,7 +1205,7 @@ public class CombateScreen implements Screen {
                 }
                 font.draw(batch, tipoTexto, infoX, tipoY);
 
-                // 10. BARRA DE PS
+                // BARRA DE PS
                 float porcentajePS = (float) p.getPsActual() / p.getPsMaximos();
                 float barraX = infoX;
                 float barraY = y + 20;
@@ -1128,7 +1249,7 @@ public class CombateScreen implements Screen {
             }
         }
 
-        // 11. INSTRUCCIONES (abajo del todo)
+        // Instrucciones
         float instruccionesY = 60;
 
         // Fondo para instrucciones
@@ -1145,78 +1266,25 @@ public class CombateScreen implements Screen {
             instrucciones = "FLECHAS: Navegar  ENTER: Seleccionar  B/ESC: Cancelar";
         }
 
-        // Centrar instrucciones
         GlyphLayout instruccionesLayout = new GlyphLayout(font, instrucciones);
         float instruccionesX = (screenWidth - instruccionesLayout.width) / 2;
         font.draw(batch, instrucciones, instruccionesX, instruccionesY);
     }
 
-    // MÉTODO AUXILIAR: RECOMENDACIÓN DE TIPO
-    private void dibujarRecomendacionTipo() {
-        Pokemon rival = combate.getPokemonRival();
-        Tipo tipoRival = rival.getTipoPrimario();
-
-        // Buscar Pokémon con ventaja de tipo
-        PokemonJugador mejorOpcion = null;
-        float mejorVentaja = 0;
-
-        for (PokemonJugador p : equipoVisible) {
-            if (p.estaDebilitado()) continue;
-
-            // Calcular ventaja simple
-            float ventaja = calcularVentajaTipo(p, rival);
-            if (ventaja > mejorVentaja) {
-                mejorVentaja = ventaja;
-                mejorOpcion = p;
-            }
-        }
-
-        // Mostrar recomendación si hay ventaja clara
-        if (mejorOpcion != null && mejorVentaja > 1.5f) {
-            font.setColor(new Color(0.2f, 0.8f, 0.2f, 1));
-            font.draw(batch, "★ Recomendado: " + mejorOpcion.getApodo() +
-                    " (ventaja x" + String.format("%.1f", mejorVentaja) + ")",
-                100, 70);
-        }
-    }
-
-    // MÉTODO AUXILIAR: CALCULAR VENTAJA DE TIPO
-    private float calcularVentajaTipo(Pokemon atacante, Pokemon defensor) {
-        // Tabla simple de ventajas (puedes mejorarla)
-        Map<Tipo, List<Tipo>> ventajas = new HashMap<>();
-        ventajas.put(Tipo.FUEGO, Arrays.asList(Tipo.PLANTA, Tipo.BICHO, Tipo.HIELO));
-        ventajas.put(Tipo.AGUA, Arrays.asList(Tipo.FUEGO, Tipo.TIERRA, Tipo.ROCA));
-        ventajas.put(Tipo.PLANTA, Arrays.asList(Tipo.AGUA, Tipo.TIERRA, Tipo.ROCA));
-        ventajas.put(Tipo.ELECTRICO, Arrays.asList(Tipo.AGUA, Tipo.VOLADOR));
-
-        float multiplicador = 1.0f;
-
-        // Verificar ventaja del atacante sobre el defensor
-        Tipo tipoAtk = atacante.getTipoPrimario();
-        Tipo tipoDef = defensor.getTipoPrimario();
-
-        if (ventajas.containsKey(tipoAtk) && ventajas.get(tipoAtk).contains(tipoDef)) {
-            multiplicador *= 2.0f;
-        }
-
-        // Verificar desventaja (opcional)
-        if (ventajas.containsKey(tipoDef) && ventajas.get(tipoDef).contains(tipoAtk)) {
-            multiplicador *= 0.5f;
-        }
-
-        return multiplicador;
-    }
-
+    /**
+     * Dibuja el menú de objetos mostrando los objetos de combate disponibles
+     * en el inventario del jugador organizados en una cuadrícula 2x3.
+     */
     private void dibujarMenuObjetos() {
         int screenWidth = Gdx.graphics.getWidth();
         int screenHeight = Gdx.graphics.getHeight();
 
-        // 1. FONDO SEMI-TRANSPARENTE OSCURO
+        // Fondo semi-transparente oscuro
         batch.setColor(new Color(0f, 0f, 0f, 0.85f));
         batch.draw(whitePixel, 0, 0, screenWidth, screenHeight);
         batch.setColor(Color.WHITE);
 
-        // 2. CABECERA CON TÍTULO
+        // Cabecera con título
         float headerY = screenHeight - 60;
 
         // Fondo de cabecera
@@ -1243,7 +1311,7 @@ public class CombateScreen implements Screen {
         float subtituloY = headerY - 25;
         font.draw(batch, subtitulo, subtituloX, subtituloY);
 
-        // 3. INFORMACIÓN DEL POKÉMON ACTUAL
+        // Información del Pokémon actual
         Pokemon actual = combate.getPokemonJugador();
         font.setColor(new Color(0.9f, 0.9f, 0.5f, 1));
         String actualTexto = "Actual: " + actual.getApodo() + " (Nv. " + actual.getNivel() + ")";
@@ -1252,10 +1320,9 @@ public class CombateScreen implements Screen {
         float actualY = headerY - 45;
         font.draw(batch, actualTexto, actualX, actualY);
 
-        // 4. DISEÑO DE CUADRÍCULA 2x3 - MISMAS MEDIDAS QUE MENÚ POKÉMON
+        // Diseño de cuadrícula 2x3
         float startY = headerY - 175;
 
-        // MISMAS DIMENSIONES que menú Pokémon
         float boxWidth = 320;
         float boxHeight = 100;
         float horizontalSpacing = 40;
@@ -1265,17 +1332,17 @@ public class CombateScreen implements Screen {
         float totalWidth = (2 * boxWidth) + horizontalSpacing;
         float gridStartX = (screenWidth - totalWidth) / 2;
 
-        // 5. POSICIONES PARA 2 COLUMNAS, 3 FILAS - MISMA DISPOSICIÓN
+        // Posiciones para 2 columnas, 3 filas
         float[][] positions = {
-            {gridStartX, startY},                              // Columna 0, Fila 0
-            {gridStartX + boxWidth + horizontalSpacing, startY}, // Columna 1, Fila 0
-            {gridStartX, startY - boxHeight - verticalSpacing},   // Columna 0, Fila 1
-            {gridStartX + boxWidth + horizontalSpacing, startY - boxHeight - verticalSpacing}, // Columna 1, Fila 1
-            {gridStartX, startY - 2 * (boxHeight + verticalSpacing)}, // Columna 0, Fila 2
-            {gridStartX + boxWidth + horizontalSpacing, startY - 2 * (boxHeight + verticalSpacing)} // Columna 1, Fila 2
+            {gridStartX, startY},
+            {gridStartX + boxWidth + horizontalSpacing, startY},
+            {gridStartX, startY - boxHeight - verticalSpacing},
+            {gridStartX + boxWidth + horizontalSpacing, startY - boxHeight - verticalSpacing},
+            {gridStartX, startY - 2 * (boxHeight + verticalSpacing)},
+            {gridStartX + boxWidth + horizontalSpacing, startY - 2 * (boxHeight + verticalSpacing)}
         };
 
-        // 6. OBTENER OBJETOS DE COMBATE DEL INVENTARIO
+        // Obtener objetos de combate del inventario
         Inventario inventario = player.getInventario();
         List<Ranura> todasLasRanuras = inventario.getRanuras();
         List<Ranura> objetosCombate = new ArrayList<>();
@@ -1287,7 +1354,7 @@ public class CombateScreen implements Screen {
             }
         }
 
-        // 7. DIBUJAR LOS 6 SLOTS
+        // Dibujar los 6 slots
         for (int slotIndex = 0; slotIndex < 6; slotIndex++) {
             float x = positions[slotIndex][0];
             float y = positions[slotIndex][1];
@@ -1295,7 +1362,7 @@ public class CombateScreen implements Screen {
             boolean tieneObjeto = slotIndex < objetosCombate.size();
             boolean esSeleccionado = (slotIndex == seleccionObjeto);
 
-            // 8. DIBUJAR CUADRO DEL SLOT
+            // Dibujar cuadro del slot
             Color colorFondo;
             Color colorBorde;
 
@@ -1319,12 +1386,12 @@ public class CombateScreen implements Screen {
             batch.draw(whitePixel, x + boxWidth, y, 3, boxHeight);
             batch.setColor(Color.WHITE);
 
-            // 9. DIBUJAR OBJETO SI EXISTE
+            // Dibujar objeto si existe
             if (tieneObjeto) {
                 Ranura ranura = objetosCombate.get(slotIndex);
                 Item item = ranura.getItem();
 
-                // ICONO SEGÚN TIPO DE OBJETO (56x56)
+                // ICONO según tipo de objeto (56x56)
                 float iconoX = x + 10;
                 float iconoY = y + (boxHeight - 56) / 2;
                 float iconoSize = 56;
@@ -1336,8 +1403,8 @@ public class CombateScreen implements Screen {
                 if (item instanceof Pokeball) {
                     colorIcono = new Color(1f, 0.3f, 0.3f, 1);
                     textoIcono = "POKÉ";
-                } else if (item instanceof Revivir) { // <--- NUEVO ICONO
-                    colorIcono = new Color(1f, 1f, 0.2f, 1); // Amarillo
+                } else if (item instanceof Revivir) {
+                    colorIcono = new Color(1f, 1f, 0.2f, 1);
                     textoIcono = "REVIVE";
                 } else if (item instanceof Curacion) {
                     colorIcono = new Color(0.3f, 1f, 0.3f, 1);
@@ -1368,7 +1435,7 @@ public class CombateScreen implements Screen {
                 font.getData().setScale(1.0f);
                 batch.setColor(Color.WHITE);
 
-                // 10. INFORMACIÓN A LA DERECHA DEL ICONO
+                // Información a la derecha del icono
                 float infoX = x + 80;
                 float infoTopY = y + boxHeight - 15;
 
@@ -1385,12 +1452,12 @@ public class CombateScreen implements Screen {
                 String cantidadTexto = "x" + ranura.getCantidad();
                 font.draw(batch, cantidadTexto, x + boxWidth - 60, infoTopY);
 
-                // EFECTO - línea media
+                // EFECTO
                 float efectoY = y + boxHeight - 40;
                 font.setColor(colorIcono);
 
                 String efectoTexto = "";
-                if (item instanceof Revivir) { // <--- NUEVO TEXTO
+                if (item instanceof Revivir) {
                     Revivir rev = (Revivir) item;
                     efectoTexto = "REVIVE: " + rev.getPorcentajeRecuperacion() + "% PS";
                 } else if (item instanceof Pokeball) {
@@ -1414,7 +1481,7 @@ public class CombateScreen implements Screen {
             }
         }
 
-        // 11. INSTRUCCIONES
+        // Instrucciones
         float instruccionesY = 30;
 
         // Fondo para instrucciones
@@ -1431,6 +1498,10 @@ public class CombateScreen implements Screen {
         font.draw(batch, instrucciones, instruccionesX, instruccionesY + 10);
     }
 
+    /**
+     * Dibuja el panel de mensajes que muestra eventos y resultados del combate,
+     * permitiendo al jugador avanzar a través de múltiples mensajes secuenciales.
+     */
     private void dibujarMensaje() {
         // Panel de mensaje
         batch.setColor(COLOR_MENU);
@@ -1441,11 +1512,10 @@ public class CombateScreen implements Screen {
         batch.draw(whitePixel, 0, 50, Gdx.graphics.getWidth(), 2);
         batch.draw(whitePixel, 0, 150, Gdx.graphics.getWidth(), 2);
 
-        // Mensaje actual - SOLO UN MENSAJE A LA VEZ
+        // Mensaje actual
         if (indiceMensaje < mensajes.size()) {
             String mensaje = mensajes.get(indiceMensaje);
 
-            // Dibujar con wrap de texto
             GlyphLayout layout = new GlyphLayout();
             font.setColor(COLOR_TEXTO);
             layout.setText(font, mensaje, Color.WHITE, Gdx.graphics.getWidth() - 100, Align.left, true);
@@ -1457,16 +1527,23 @@ public class CombateScreen implements Screen {
         font.draw(batch, "Presiona Enter para continuar...", 50, 70);
     }
 
+    /**
+     * Actualiza la lista de mensajes mostrados en pantalla con los eventos
+     * recientes del historial de combate, añadiendo solo los mensajes nuevos.
+     */
     private void actualizarMensajes() {
         List<String> historialCompleto = combate.getHistorial();
         if (mensajes.size() < historialCompleto.size()) {
-            // Agregar solo los mensajes nuevos
             for (int i = mensajes.size(); i < historialCompleto.size(); i++) {
                 mensajes.add(historialCompleto.get(i));
             }
         }
     }
 
+    /**
+     * Dibuja la animación inicial de entrada al combate con efecto de fundido
+     * que gradualmente revela la escena de combate completa.
+     */
     private void dibujarAnimacionEntrada() {
         // Efecto de fade in
         float alpha = Math.min(1.0f, tiempoAnimacion);
@@ -1475,6 +1552,10 @@ public class CombateScreen implements Screen {
         batch.setColor(Color.WHITE);
     }
 
+    /**
+     * Dibuja la pantalla final del combate que muestra el resultado (victoria,
+     * derrota, captura o huida) y permite al jugador continuar.
+     */
     private void dibujarFinCombate() {
         // Panel de resultado
         batch.setColor(COLOR_MENU);
@@ -1542,6 +1623,13 @@ public class CombateScreen implements Screen {
         font.draw(batch, "Presiona ESPACIO para continuar", 250, 250);
     }
 
+    /**
+     * Obtiene un color representativo para un tipo elemental específico de
+     * Pokémon, utilizado para resaltar visualmente movimientos y tipos.
+     *
+     * @param tipo Tipo elemental del Pokémon o movimiento
+     * @return Color asociado al tipo especificado
+     */
     private Color getColorPorTipo(Tipo tipo) {
         switch (tipo) {
             case FUEGO: return Color.ORANGE;
@@ -1553,6 +1641,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Ejecuta el movimiento seleccionado por el jugador en el combate actual,
+     * validando que sea posible y actualizando el estado del combate.
+     */
     private void ejecutarMovimiento() {
         List<Movimiento> movimientos = combate.getPokemonJugador().getMovimientos();
 
@@ -1590,6 +1682,10 @@ public class CombateScreen implements Screen {
         estadoActual = EstadoMenu.MOSTRANDO_MENSAJE;
     }
 
+    /**
+     * Cambia el Pokémon activo en combate por otro del equipo del jugador,
+     * validando que el nuevo Pokémon esté disponible y no debilitado.
+     */
     private void cambiarPokemon() {
         if (seleccionPokemon >= equipoVisible.size()) return;
 
@@ -1644,6 +1740,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Maneja el cambio forzado de Pokémon cuando el actual ha sido debilitado,
+     * obligando al jugador a seleccionar un Pokémon alternativo para continuar.
+     */
     private void cambiarPokemonForzado() {
         if (seleccionPokemon >= equipoVisible.size()) return;
 
@@ -1675,6 +1775,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Usa el objeto seleccionado del inventario durante el combate, aplicando
+     * su efecto correspondiente (captura, curación o revivir).
+     */
     private void usarObjeto() {
         // Obtenemos las ranuras de items de combate
         List<Ranura> itemsCombate = new ArrayList<>();
@@ -1705,7 +1809,7 @@ public class CombateScreen implements Screen {
 
         if (item instanceof Revivir) {
             modoRevivir = true;
-            actualizarEquipoVisible(); // 2. Refrescamos la lista (ahora mostrará a todos)
+            actualizarEquipoVisible();
             estadoActual = EstadoMenu.MENU_POKEMON;
             seleccionPokemon = 0;
             return;
@@ -1745,24 +1849,28 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Ejecuta la acción de revivir un Pokémon debilitado utilizando un objeto
+     * Revivir del inventario, restaurando un porcentaje de su salud máxima.
+     */
     private void ejecutarAccionRevivir() {
         PokemonJugador seleccionado = equipoVisible.get(seleccionPokemon);
 
         if (seleccionado.estaDebilitado()) {
-            // 1. Aplicar efecto (50% de vida por ejemplo)
+            // Aplicar efecto
             seleccionado.revivir(50);
 
-            // 2. Consumir el item del inventario
+            // Consumir el item del inventario
             player.getInventario().removerItem("Revivir", 1);
 
-            // 3. Configurar mensajes
+            // Configurar mensajes
             mensajes.clear();
             mensajes.add("¡" + seleccionado.getApodo() + " ha revivido!");
 
-            // 4. Finalizar turno y limpiar bandera
+            // Finalizar turno y limpiar bandera
             modoRevivir = false;
             combate.ejecutarTurnoRival();
-            prepararMensajesParaAccion(); // El método que ya tienes para actualizar historial
+            prepararMensajesParaAccion();
             estadoActual = EstadoMenu.MOSTRANDO_MENSAJE;
         } else {
             // Error si intentas revivir a alguien sano
@@ -1770,10 +1878,13 @@ public class CombateScreen implements Screen {
             mensajes.add("¡" + seleccionado.getApodo() + " no necesita eso!");
             indiceMensaje = 0;
             estadoActual = EstadoMenu.MOSTRANDO_MENSAJE;
-            // No quitamos modoRevivir para que el jugador pueda elegir a otro
         }
     }
 
+    /**
+     * Intenta que el jugador huya del combate con una probabilidad basada en
+     * la comparación de velocidad entre los Pokémon combatientes.
+     */
     private void intentarHuir() {
         // Guardar historial antes
         int historialAntes = combate.getHistorial().size();
@@ -1793,6 +1904,11 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Avanza al siguiente mensaje en la secuencia o, si no hay más mensajes,
+     * determina el siguiente estado del combate basándose en las condiciones
+     * actuales (turno rival, cambio forzado, fin del combate, etc.).
+     */
     private void avanzarMensaje() {
         indiceMensaje++;
 
@@ -1845,6 +1961,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Actualiza la lista de Pokémon visibles en los menús de selección,
+     * filtrando según el modo actual (normal o modo revivir).
+     */
     private void actualizarEquipoVisible() {
         equipoVisible.clear();
         for (PokemonJugador p : player.getEntrenador().getEquipo()) {
@@ -1854,6 +1974,10 @@ public class CombateScreen implements Screen {
         }
     }
 
+    /**
+     * Finaliza el combate limpiando recursos, otorgando recompensas si corresponde,
+     * restaurando la música del mundo y retornando a la pantalla de juego principal.
+     */
     private void terminarCombate() {
         if (finalizando) return;
         finalizando = true;
@@ -1890,19 +2014,24 @@ public class CombateScreen implements Screen {
         game.setScreen(gameScreen);
     }
 
+    /**
+     * Actualiza la lista de mensajes mostrados desde el historial del combate,
+     * manteniendo un registro del último índice procesado para evitar duplicados.
+     */
     private void actualizarMensajesDesdeHistorial() {
         List<String> historial = combate.getHistorial();
 
-        // Solo agregar mensajes nuevos (después del último índice)
         for (int i = ultimoIndiceHistorial; i < historial.size(); i++) {
             mensajes.add(historial.get(i));
         }
 
-        // Actualizar el índice del último mensaje procesado
         ultimoIndiceHistorial = historial.size();
     }
 
-    // ✅ NUEVO MÉTODO: Preparar para mostrar mensajes de una acción
+    /**
+     * Prepara la lista de mensajes para mostrar después de una acción de combate,
+     * limpiando mensajes anteriores y cargando los nuevos del historial.
+     */
     private void prepararMensajesParaAccion() {
         // Limpiar mensajes anteriores de la pantalla
         mensajes.clear();
@@ -1912,27 +2041,40 @@ public class CombateScreen implements Screen {
         actualizarMensajesDesdeHistorial();
     }
 
+    /**
+     * Se ejecuta cuando esta pantalla se convierte en la pantalla activa del juego,
+     * configurando el procesador de entrada para capturar las teclas del jugador.
+     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(inputProcessor);
     }
 
+    /** Maneja el redimensionamiento de la ventana de visualización */
     @Override
-    public void resize(int width, int height) {
-        // No necesitamos hacer nada especial
-    }
+    public void resize(int width, int height) {}
 
+    /** Se ejecuta cuando el juego entra en estado de pausa */
     @Override
     public void pause() {}
 
+    /** Se ejecuta cuando el juego se reanuda después de una pausa */
     @Override
     public void resume() {}
 
+    /**
+     * Se ejecuta cuando esta pantalla deja de ser la pantalla activa,
+     * limpiando el procesador de entrada para evitar conflictos.
+     */
     @Override
     public void hide() {
         Gdx.input.setInputProcessor(null);
     }
 
+    /**
+     * Libera todos los recursos gráficos utilizados por esta pantalla para
+     * prevenir fugas de memoria cuando ya no es necesaria.
+     */
     @Override
     public void dispose() {
         if (destruido) return;

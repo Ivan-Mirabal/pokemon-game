@@ -7,6 +7,11 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import java.util.*;
 
+/**
+ * Carga y gestiona todos los datos del juego desde archivos JSON.
+ * Implementa el patrón Singleton para asegurar una única instancia global.
+ * Incluye caché para mejorar el rendimiento en accesos repetidos a los datos.
+ */
 public class DataLoader {
     private static DataLoader instance;
 
@@ -18,6 +23,10 @@ public class DataLoader {
     // Cache de sprites para evitar cargas múltiples
     private Map<String, String> spritePaths;
 
+    /**
+     * Constructor privado para implementar el patrón Singleton.
+     * Inicializa todas las estructuras de datos y carga la información del juego.
+     */
     private DataLoader() {
         speciesData = new HashMap<>();
         moveData = new HashMap<>();
@@ -27,6 +36,10 @@ public class DataLoader {
         loadAllData();
     }
 
+    /**
+     * Obtiene la instancia única del cargador de datos.
+     * Crea una nueva instancia si no existe previamente.
+     */
     public static DataLoader getInstance() {
         if (instance == null) {
             instance = new DataLoader();
@@ -34,6 +47,10 @@ public class DataLoader {
         return instance;
     }
 
+    /**
+     * Coordina la carga de todos los tipos de datos del juego.
+     * Llama a los métodos específicos para cargar especies, movimientos y encuentros.
+     */
     private void loadAllData() {
         System.out.println("Cargando datos de Pokémon...");
         loadSpecies();
@@ -41,6 +58,10 @@ public class DataLoader {
         loadEncounters();
     }
 
+    /**
+     * Carga las especies de Pokémon desde el archivo JSON correspondiente.
+     * Almacena los datos en un mapa clave-valor para acceso rápido.
+     */
     private void loadSpecies() {
         try {
             FileHandle file = Gdx.files.internal("data/species.json");
@@ -64,6 +85,10 @@ public class DataLoader {
         }
     }
 
+    /**
+     * Carga los movimientos de Pokémon desde el archivo JSON correspondiente.
+     * Incluye información sobre tipo, poder, precisión y categoría de cada movimiento.
+     */
     private void loadMoves() {
         try {
             FileHandle file = Gdx.files.internal("data/moves.json");
@@ -80,6 +105,10 @@ public class DataLoader {
         }
     }
 
+    /**
+     * Carga las tablas de encuentros de Pokémon para diferentes zonas del juego.
+     * Maneja errores de archivo faltante cargando datos por defecto como respaldo.
+     */
     private void loadEncounters() {
         try {
             FileHandle file = Gdx.files.internal("data/encounters.json");
@@ -127,6 +156,10 @@ public class DataLoader {
         }
     }
 
+    /**
+     * Carga una configuración de encuentros por defecto cuando el archivo principal no está disponible.
+     * Proporciona datos básicos para permitir que el juego funcione sin el archivo JSON.
+     */
     private void cargarEncuentrosPorDefecto() {
         System.out.println("⚠️ Cargando encuentros por defecto...");
 
@@ -142,6 +175,9 @@ public class DataLoader {
         System.out.println("✅ Encuentros por defecto cargados para mapa_centro");
     }
 
+    /**
+     * Crea un registro de encuentro por defecto con los parámetros especificados.
+     */
     private EncounterData crearEncounterPorDefecto(String especie, int probabilidad, int minNivel, int maxNivel) {
         EncounterData data = new EncounterData();
         data.species = especie;
@@ -153,14 +189,32 @@ public class DataLoader {
 
     // ===== GETTERS PÚBLICOS =====
 
+    /**
+     * Obtiene los datos de una especie específica de Pokémon.
+     *
+     * @param name nombre de la especie (no sensible a mayúsculas/minúsculas)
+     * @return datos de la especie o null si no se encuentra
+     */
     public SpeciesData getSpeciesData(String name) {
         return speciesData.get(name.toUpperCase());
     }
 
+    /**
+     * Obtiene los datos de un movimiento específico.
+     *
+     * @param name nombre del movimiento (no sensible a mayúsculas/minúsculas)
+     * @return datos del movimiento o null si no se encuentra
+     */
     public MoveData getMoveData(String name) {
         return moveData.get(name.toUpperCase());
     }
 
+    /**
+     * Obtiene la lista de encuentros disponibles en una zona específica del juego.
+     *
+     * @param zone nombre de la zona (no sensible a mayúsculas/minúsculas)
+     * @return lista de encuentros para la zona o null si no hay datos
+     */
     public List<EncounterData> getEncountersForZone(String zone) {
         String key = zone.toLowerCase();
         List<EncounterData> result = encounterData.get(key);
@@ -168,10 +222,17 @@ public class DataLoader {
         return result;
     }
 
+    /**
+     * Obtiene un mapa con todas las especies cargadas en el sistema.
+     * Devuelve una copia para proteger la integridad de los datos internos.
+     */
     public Map<String, SpeciesData> getAllSpeciesData() {
         return new HashMap<>(speciesData);
     }
 
+    /**
+     * Obtiene una lista ordenada alfabéticamente con los nombres de todas las especies.
+     */
     public List<String> getAllSpeciesNames() {
         List<String> names = new ArrayList<>(speciesData.keySet());
         Collections.sort(names);
@@ -180,18 +241,26 @@ public class DataLoader {
 
     // ===== CLASES INTERNAS PARA PARSING JSON =====
 
+    /**
+     * Clase contenedora para la lista de especies en el archivo JSON.
+     */
     public static class SpeciesList {
         public SpeciesData[] species;
     }
 
+    /**
+     * Clase contenedora para la lista de movimientos en el archivo JSON.
+     */
     public static class MoveList {
         public MoveData[] moves;
     }
 
-    // Ya no usamos EncounterDataList porque parseamos manualmente
-
     // ===== CLASES DE DATOS =====
 
+    /**
+     * Representa los datos completos de una especie de Pokémon.
+     * Incluye estadísticas base, tipos, habilidad e información de evolución.
+     */
     public static class SpeciesData {
         public String name;
         public String type1;
@@ -208,12 +277,19 @@ public class DataLoader {
         public int evolutionLevel;
         public String evolutionItem;
 
+        /**
+         * Devuelve una representación legible de la especie con sus tipos.
+         */
         @Override
         public String toString() {
             return name + " (" + type1 + (type2 != null ? "/" + type2 : "") + ")";
         }
     }
 
+    /**
+     * Representa los datos completos de un movimiento de Pokémon.
+     * Incluye propiedades de combate como poder, precisión y tipo de daño.
+     */
     public static class MoveData {
         public String name;
         public String type;
@@ -223,18 +299,28 @@ public class DataLoader {
         public String category; // "PHYSICAL" o "SPECIAL"
         public String description;
 
+        /**
+         * Devuelve una representación resumida del movimiento.
+         */
         @Override
         public String toString() {
             return name + " [" + type + "] " + power + " PWR";
         }
     }
 
+    /**
+     * Representa un posible encuentro de Pokémon en una zona específica.
+     * Define la especie, rango de niveles y probabilidad de aparición.
+     */
     public static class EncounterData {
         public String species;
         public int probability;
         public int minLevel;
         public int maxLevel;
 
+        /**
+         * Devuelve una representación legible del encuentro.
+         */
         @Override
         public String toString() {
             return species + " (" + minLevel + "-" + maxLevel + ") " + probability + "%";

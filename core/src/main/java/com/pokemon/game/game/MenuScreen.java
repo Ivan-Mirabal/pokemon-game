@@ -12,9 +12,11 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.pokemon.game.data.SaveData;
 import com.pokemon.game.data.SaveManager;
 
+/**
+ * Pantalla del menú principal del juego. Muestra opciones para iniciar nueva partida, cargar partida y salir.
+ */
 public class MenuScreen implements Screen {
-
-    final PokemonGame game;
+    private final PokemonGame game;
     private SpriteBatch batch;
     private Texture background;
     private Texture titleLogo;
@@ -26,46 +28,52 @@ public class MenuScreen implements Screen {
     private float blinkTimer = 0f;
     private boolean showText = true;
 
-    // Bandera para evitar múltiples transiciones
+    // Control de transiciones
     private boolean transitioning = false;
 
-    // Variables para animación del logo
+    // Animación del logo
     private float logoScale = 1.0f;
     private float logoPulseSpeed = 1.5f;
     private float logoPulseTimer = 0f;
     private float maxLogoScale = 1.05f;
     private float minLogoScale = 0.95f;
 
-    // Tamaño fijo para ventana de 800x600
+    // Tamaño de pantalla fijo
     private final int SCREEN_WIDTH = 800;
     private final int SCREEN_HEIGHT = 600;
 
+    /**
+     * Constructor. Inicializa los recursos gráficos del menú.
+     * @param game Instancia principal del juego
+     */
     public MenuScreen(final PokemonGame game) {
         this.game = game;
         batch = new SpriteBatch();
 
-        // Cargar fondo
+        // Cargar fondos
         try {
             background = new Texture(Gdx.files.internal("sprites/menu_background.png"));
         } catch (Exception e) {
             background = createFallbackTexture(Color.DARK_GRAY);
         }
 
-        // Cargar logo del título
         try {
             titleLogo = new Texture(Gdx.files.internal("sprites/title_logo.png"));
         } catch (Exception e) {
-            // Si no existe el logo, crear uno temporal
             titleLogo = createPlaceholderLogo();
         }
 
-        // Fuente - tamaño ajustado para 800x600
+        // Fuente
         font = new BitmapFont();
         font.getData().setScale(1.8f);
-
         glyphLayout = new GlyphLayout();
     }
 
+    /**
+     * Crea una textura de fallback cuando no se encuentra la imagen.
+     * @param color Color de la textura
+     * @return Textura generada
+     */
     private Texture createFallbackTexture(Color color) {
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(
             SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -78,6 +86,10 @@ public class MenuScreen implements Screen {
         return texture;
     }
 
+    /**
+     * Crea un logo temporal cuando no se encuentra la imagen original.
+     * @return Logo temporal
+     */
     private Texture createPlaceholderLogo() {
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(
             400, 240, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888
@@ -91,66 +103,53 @@ public class MenuScreen implements Screen {
         return texture;
     }
 
+    /**
+     * Renderiza la pantalla. Maneja entrada, animaciones y dibuja todos los elementos.
+     * @param delta Tiempo desde el último frame
+     */
     @Override
     public void render(float delta) {
-        // Manejar entrada primero
-        if (!transitioning) {
-            handleInput();
-        }
+        if (!transitioning) handleInput();
 
-        // Actualizar animación del logo (pulsación suave)
+        // Animación del logo
         logoPulseTimer += delta * logoPulseSpeed;
         logoScale = minLogoScale + (maxLogoScale - minLogoScale) *
             (float)Math.abs(Math.sin(logoPulseTimer)) * 0.5f;
 
-        // Solo renderizar si no estamos en transición
-        if (transitioning) {
-            return;
-        }
+        if (transitioning) return;
 
         ScreenUtils.clear(0.1f, 0.1f, 0.2f, 1);
-
         batch.begin();
 
-        // Dibujar fondo
+        // Fondo
         batch.draw(background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        // CALCULAR POSICIÓN DEL LOGO - BAJADO A 300px
+        // Logo
         float logoWidth = titleLogo.getWidth() * logoScale;
         float logoHeight = titleLogo.getHeight() * logoScale;
         float logoX = (SCREEN_WIDTH - logoWidth) / 2;
-        float logoY = 300; // BAJADO: 300px desde abajo (antes 350)
-
-        // Dibujar logo con efecto de pulso
+        float logoY = 300;
         batch.draw(titleLogo, logoX, logoY, logoWidth, logoHeight);
 
-        // OPCIONES DEL MENÚ (también bajadas un poco para mantener proporción)
-        float startY = 250; // BAJADO: 200px desde abajo (antes 220)
+        // Opciones del menú
+        float startY = 250;
         float spacing = 50f;
 
         for (int i = 0; i < menuItems.length; i++) {
             String itemText = menuItems[i];
             String displayText = itemText;
 
-            // Si está seleccionado y showText es true, agregar indicadores
             if (i == selectedItem && showText) {
                 displayText = "> " + itemText + " <";
             }
 
-            // Calcular posición
             glyphLayout.setText(font, displayText);
             float x = (SCREEN_WIDTH - glyphLayout.width) / 2;
             float y = startY - (i * spacing);
 
-            // Determinar color de relleno
-            Color fillColor;
-            if (i == selectedItem) {
-                fillColor = Color.GREEN;
-            } else {
-                fillColor = new Color(0.9f, 0.9f, 0.9f, 1);
-            }
+            Color fillColor = (i == selectedItem) ? Color.GREEN : new Color(0.9f, 0.9f, 0.9f, 1);
 
-            // Dibujar con borde negro
+            // Borde
             font.setColor(Color.BLACK);
             font.draw(batch, displayText, x - 1, y);
             font.draw(batch, displayText, x + 1, y);
@@ -162,14 +161,13 @@ public class MenuScreen implements Screen {
             font.draw(batch, displayText, x, y);
         }
 
-        // INSTRUCCIONES (posición fija en la parte inferior)
+        // Instrucciones
         font.getData().setScale(1.2f);
         String instructions = "Flechas: Arriba/Abajo | ENTER: Seleccionar";
         glyphLayout.setText(font, instructions);
         float insX = (SCREEN_WIDTH - glyphLayout.width) / 2;
-        float insY = 50; // 50px desde abajo
+        float insY = 50;
 
-        // Instrucciones con borde
         font.setColor(Color.BLACK);
         font.draw(batch, instructions, insX - 1, insY);
         font.draw(batch, instructions, insX + 1, insY);
@@ -179,10 +177,9 @@ public class MenuScreen implements Screen {
         font.setColor(new Color(0.8f, 0.8f, 0.8f, 1));
         font.draw(batch, instructions, insX, insY);
 
-        // Restaurar tamaño de fuente para opciones
         font.getData().setScale(1.8f);
 
-        // Actualizar parpadeo
+        // Parpadeo de selección
         blinkTimer += delta;
         if (blinkTimer >= 0.3f) {
             blinkTimer = 0f;
@@ -192,10 +189,13 @@ public class MenuScreen implements Screen {
         batch.end();
     }
 
+    /**
+     * Maneja la entrada del teclado para navegar el menú.
+     */
     private void handleInput() {
         if (transitioning) return;
 
-        // Navegación del menú
+        // Navegación
         if (Gdx.input.isKeyJustPressed(Keys.UP)) {
             selectedItem = (selectedItem - 1 + menuItems.length) % menuItems.length;
         }
@@ -204,21 +204,21 @@ public class MenuScreen implements Screen {
             selectedItem = (selectedItem + 1) % menuItems.length;
         }
 
-        // Seleccionar opción
+        // Selección
         if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
             transitioning = true;
 
             switch(selectedItem) {
-                case 0: // NUEVA PARTIDA
+                case 0: // Nueva partida
                     System.out.println("Iniciando nueva partida...");
                     game.setScreen(new StarterSelectionScreen(game));
                     break;
 
-                case 1: // CARGAR PARTIDA
+                case 1: // Cargar partida
                     cargarPartidaGuardada();
                     break;
 
-                case 2: // SALIR DEL JUEGO
+                case 2: // Salir
                     System.out.println("Saliendo del juego...");
                     Gdx.app.exit();
                     break;
@@ -226,6 +226,9 @@ public class MenuScreen implements Screen {
         }
     }
 
+    /**
+     * Intenta cargar una partida guardada y transiciona a la pantalla de juego.
+     */
     private void cargarPartidaGuardada() {
         try {
             if (!SaveManager.getInstance().existePartida()) return;
@@ -233,14 +236,12 @@ public class MenuScreen implements Screen {
             SaveData datos = SaveManager.getInstance().cargarPartida();
 
             if (datos != null) {
-                // Si ya hay una GameScreen activa, reusarla
                 if (game.getScreen() instanceof GameScreen) {
                     GameScreen existingScreen = (GameScreen) game.getScreen();
                     existingScreen.cargarDatosJugador(datos);
                     game.setScreen(existingScreen);
                 } else {
-                    // Crear nueva solo si no existe
-                    GameScreen gameScreen = new GameScreen(game, "maps/mapa_centro.tmx", 15 * 16, 10 * 16);
+                    GameScreen gameScreen = new GameScreen(game, "maps/mapa_centro.tmx", 30 * 16, 20 * 16);
                     game.setScreen(gameScreen);
                     gameScreen.cargarDatosJugador(datos);
                 }

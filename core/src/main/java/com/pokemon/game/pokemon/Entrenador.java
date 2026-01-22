@@ -33,11 +33,11 @@ public class Entrenador {
             return false;
         }
 
-        // ✅ Asegúrate de que esta línea esté presente:
-        pokemon.setEntrenador(this); // Asignar este entrenador como dueño
-
+        pokemon.setEntrenador(this);
         equipo.add(pokemon);
-        if (pokemonActual == null) {
+
+        // Si es el primer Pokémon o no hay Pokémon actual, establecerlo
+        if (pokemonActual == null || equipo.size() == 1) {
             pokemonActual = pokemon;
         }
         return true;
@@ -153,9 +153,30 @@ public class Entrenador {
         }
     }
 
+    public void actualizarPokemonActual() {
+        if (!equipo.isEmpty()) {
+            pokemonActual = equipo.get(0);
+        } else {
+            pokemonActual = null;
+        }
+    }
+
+    public void setPokemonActual(int indice) {
+        if (indice >= 0 && indice < equipo.size()) {
+            pokemonActual = equipo.get(indice);
+        }
+    }
+
+    public Pokemon getPokemonArranque() {
+        return equipo.isEmpty() ? null : equipo.get(0);
+    }
+
     // Getters
     public String getNombre() { return nombre; }
-    public List<PokemonJugador> getEquipo() { return new ArrayList<>(equipo); }
+    // En Entrenador.java, verifica que getEquipo() devuelva la lista directamente:
+    public List<PokemonJugador> getEquipo() {
+        return equipo;
+    }
     public Pokemon getPokemonActual() { return pokemonActual; }
     public Inventario getInventario() { return inventario; }
 
@@ -170,6 +191,52 @@ public class Entrenador {
     public void vaciarEquipo() {
         this.equipo.clear();
         this.pokemonActual = null;
+    }
+
+    // En la clase Entrenador, añade estos métodos:
+
+    public void intercambiarPokemon(int posicion1, int posicion2) {
+        if (posicion1 < 0 || posicion1 >= equipo.size() ||
+            posicion2 < 0 || posicion2 >= equipo.size() ||
+            posicion1 == posicion2) {
+            return;
+        }
+
+        // Intercambiar posiciones
+        PokemonJugador temp = equipo.get(posicion1);
+        equipo.set(posicion1, equipo.get(posicion2));
+        equipo.set(posicion2, temp);
+
+        // Si el Pokémon actual está involucrado, actualizarlo
+        if (pokemonActual == equipo.get(posicion2)) {
+            pokemonActual = equipo.get(posicion1);
+        } else if (pokemonActual == equipo.get(posicion1)) {
+            pokemonActual = equipo.get(posicion2);
+        }
+    }
+
+    public void moverPokemon(int origen, int destino) {
+        if (origen < 0 || origen >= equipo.size() ||
+            destino < 0 || destino >= equipo.size() ||
+            origen == destino) {
+            return;
+        }
+
+        PokemonJugador pokemon = equipo.remove(origen);
+        equipo.add(destino, pokemon);
+
+        // Actualizar referencia al Pokémon actual si es necesario
+        if (pokemonActual == pokemon && destino == 0) {
+            // El Pokémon movido ahora está en la primera posición
+            pokemonActual = pokemon;
+        }
+    }
+
+    public PokemonJugador getPokemonEnPosicion(int posicion) {
+        if (posicion >= 0 && posicion < equipo.size()) {
+            return equipo.get(posicion);
+        }
+        return null;
     }
 
     @Override

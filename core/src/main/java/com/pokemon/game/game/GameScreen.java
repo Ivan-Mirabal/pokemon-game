@@ -17,7 +17,6 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pokemon.game.*;
-import com.pokemon.game.data.DataLoader;
 import com.pokemon.game.data.SaveData;
 import com.pokemon.game.data.SaveManager;
 import com.pokemon.game.item.*;
@@ -33,6 +32,10 @@ import java.util.HashMap;
 
 import java.util.List;
 
+
+/**Clase que maneja los estados de juego, transiciones de mapas, interacciones
+ * jugador-teclado, dibujado visual de inventario y sus derivaciones y
+ * cambios de pantalla*/
 public class GameScreen implements Screen {
 
     final PokemonGame game;
@@ -97,6 +100,10 @@ public class GameScreen implements Screen {
         this(game, initialMap, startX, startY, null);
     }
 
+    /**
+     * Inicializamos la posicion inicial del jugador, mapa,
+     * pokemon elegido al inicio e iniciamos los demas metodos correspondientes
+     */
     public GameScreen(final PokemonGame game, String initialMap, float startX, float startY, PokemonJugador inicial) {
         this.game = game;
         this.initialMap = initialMap;
@@ -122,6 +129,7 @@ public class GameScreen implements Screen {
 
     }
 
+
     @Override
     public void show() {
         // Evita recargar el mapa si ya está cargado
@@ -143,6 +151,8 @@ public class GameScreen implements Screen {
         }
     }
 
+    /**Metodo para cargar el mapa, capas, colisiones, jugador, sistema de recoleccion, etc
+     * y manejar el caso del encuentro legendario con Arceus*/
     private void loadMap(String mapFile, float playerX, float playerY) {
         if (mapa != null) mapa.dispose();
         if (renderer != null) renderer.dispose();
@@ -181,7 +191,6 @@ public class GameScreen implements Screen {
             // Ya lo usamos, lo ponemos a null para no volver a agregarlo si cambiamos de mapa
             pokemonInicialParaJugador = null;
 
-            // ... (inicializar sistemaRecoleccion, etc.) ...
         } else {
             player.x = playerX;
             player.y = playerY;
@@ -241,7 +250,8 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Método para verificar si el jugador está en zona de encuentros
+    /**Funcion para detectar si el jugador esta en zonas de
+     * generacion de combate*/
     private boolean isInEncounterZone() {
         if (encounterLayer == null) {
             return false;
@@ -274,6 +284,7 @@ public class GameScreen implements Screen {
         return gid == 67 || gid == 63 || gid == 585 || gid == 120;
     }
 
+    /**Metodo auxiliar para verificar si el jugador esta en la hierba alta*/
     private boolean verificarSiEstaEnHierba(float x, float y) {
         TiledMapTileLayer hierbaLayer = (TiledMapTileLayer) mapa.getLayers().get("HierbaAlta");
         if (hierbaLayer == null) return false;
@@ -285,6 +296,8 @@ public class GameScreen implements Screen {
         return (celda != null && celda.getTile() != null);
     }
 
+    /** Metodo para verificar las transiciones entre mapas
+     * y manejar los cambios de estos mismos con el juego*/
     private void checkMapTransition() {
         if (transitionCooldown > 0) return;
 
@@ -363,10 +376,12 @@ public class GameScreen implements Screen {
         }
     }
 
+    /**Metodo para hacer la transicion de un mapa a otro*/
     private void transitionToMap(String newMapFile, float newPlayerX, float newPlayerY) {
         loadMap(newMapFile, newPlayerX, newPlayerY);
     }
 
+    /**Metodo para calcular la disposicion de la camara em base al juego*/
     private void calculateCameraBounds(float viewportWidth, float viewportHeight) {
         cameraMinX = viewportWidth / 2;
         cameraMaxX = worldWidthPx - viewportWidth / 2;
@@ -381,6 +396,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /**Metodo para calcular y actualizar la posicion de la camara*/
     private void updateCamera() {
         float cameraX = Math.max(cameraMinX, Math.min(cameraMaxX, player.x));
         float cameraY = Math.max(cameraMinY, Math.min(cameraMaxY, player.y));
@@ -524,7 +540,7 @@ public class GameScreen implements Screen {
         return whitePixel;
     }
 
-    // Manejar entrada del teclado
+    /** Funcion para manejar las entradas del teclado*/
     private void handleInput() {
 
         // Tecla I para abrir/cerrar menú principal
@@ -656,32 +672,72 @@ public class GameScreen implements Screen {
             }
 
             // Manejo para POKEMON_TEAM (existente)
+            // Manejo para POKEMON_TEAM (existente)
             if (player.getMenuState() == MenuState.POKEMON_TEAM) {
-                // Navegación en equipo (2 columnas)
-                if (Gdx.input.isKeyJustPressed(Keys.UP)) {
-                    player.movePokemonTeamUp();
-                }
-                if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
-                    player.movePokemonTeamDown();
-                }
-                if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
-                    player.movePokemonTeamLeft();
-                }
-                if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
-                    player.movePokemonTeamRight();
-                }
-
-                // A (o ENTER) para ver detalles
-                if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.A)) {
-                    if (player.getPokemonSeleccionado() != null) {
-                        player.setMenuState(MenuState.POKEMON_DETAIL);
-                        player.setPokemonDetailTab(0);
+                // Si está reordenando
+                if (player.estaReordenandoEquipo()) {
+                    // Tecla M para cancelar reordenamiento
+                    if (Gdx.input.isKeyJustPressed(Keys.M)) {
+                        player.cancelarReordenamiento();
+                    }
+                    // Enter para confirmar mover a posición seleccionada
+                    else if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
+                        player.moverPokemonAPosicion(player.getPokemonTeamSelection());
+                    }
+                    // ESC también cancela
+                    else if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+                        player.cancelarReordenamiento();
+                    }
+                    // Navegación normal sigue funcionando
+                    else {
+                        // Navegación en equipo (2 columnas)
+                        if (Gdx.input.isKeyJustPressed(Keys.UP)) {
+                            player.movePokemonTeamUp();
+                        }
+                        if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
+                            player.movePokemonTeamDown();
+                        }
+                        if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                            player.movePokemonTeamLeft();
+                        }
+                        if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                            player.movePokemonTeamRight();
+                        }
                     }
                 }
+                // Si NO está reordenando
+                else {
+                    // Navegación en equipo (2 columnas)
+                    if (Gdx.input.isKeyJustPressed(Keys.UP)) {
+                        player.movePokemonTeamUp();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
+                        player.movePokemonTeamDown();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
+                        player.movePokemonTeamLeft();
+                    }
+                    if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
+                        player.movePokemonTeamRight();
+                    }
 
-                // B (o ESC) para volver al menú principal
-                if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
-                    player.setMenuState(MenuState.MAIN);
+                    // Tecla M para iniciar reordenamiento
+                    if (Gdx.input.isKeyJustPressed(Keys.M)) {
+                        player.iniciarReordenamiento();
+                    }
+
+                    // A (o ENTER) para ver detalles
+                    if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.A)) {
+                        if (player.getPokemonSeleccionado() != null) {
+                            player.setMenuState(MenuState.POKEMON_DETAIL);
+                            player.setPokemonDetailTab(0);
+                        }
+                    }
+
+                    // B (o ESC) para volver al menú principal
+                    if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                        player.setMenuState(MenuState.MAIN);
+                    }
                 }
             }
 
@@ -789,6 +845,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /**Metodo para guardar la partida con los datos actuales*/
     private void guardarPartidaActual() {
         try {
             // Extraer datos del jugador
@@ -809,6 +866,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /**Metodo para cargar la partid en base al ultimo registro guardado*/
     public void cargarDatosJugador(SaveData datos) {
         // Si player es nulo, intentamos esperar un momento o forzar su creación
         if (this.player == null) {
@@ -822,7 +880,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Método para dibujar el menú activo
+    /** Método para dibujar el menú activo */
     private void dibujarMenu() {
         // Usar proyección de pantalla para el menú
         spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -884,7 +942,7 @@ public class GameScreen implements Screen {
         spriteBatch.setProjectionMatrix(camara.combined);
     }
 
-    // Menú Principal
+    /** funcion para dibujar el Menú Principal*/
     private void dibujarMenuPrincipal(int screenWidth, int screenHeight) {
         font.getData().setScale(2.0f);
         String titulo = "MENÚ PRINCIPAL";
@@ -916,7 +974,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Inventario
+    /** funcion para dibujar el Inventario*/
     private void dibujarInventario(int screenWidth, int screenHeight) {
         Inventario inv = player.getInventario();
 
@@ -1008,7 +1066,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Método auxiliar para dibujar columna
+    /** Método auxiliar para dibujar columna*/
     private void dibujarColumnaInventario(SpriteBatch batch, String titulo,
                                           List<Ranura> items, float x, float y,
                                           float espacio, int seleccionGlobal, int offset) {
@@ -1036,7 +1094,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Método para dibujar información del item seleccionado
+    /** Método para dibujar información del item seleccionado*/
     private void dibujarInfoItem(Ranura slot, int screenWidth, int screenHeight) {
         float panelX = 50;
         float panelY = 150;
@@ -1108,10 +1166,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Pokémon (placeholder)
-    // ===============================
-// VISTA DE EQUIPO (2 COLUMNAS)
-// ===============================
+    /** metodo para dibujar el equipo pokemon*/
     private void dibujarEquipoPokemon(int screenWidth, int screenHeight) {
         List<PokemonJugador> equipo = player.getEntrenador().getEquipo();
 
@@ -1120,32 +1175,32 @@ public class GameScreen implements Screen {
         spriteBatch.draw(whitePixel, 0, 0, 800, 600);
         spriteBatch.setColor(Color.WHITE);
 
-        // 2. TÍTULO
+        // 2. TÍTULO (con indicador de reordenamiento)
         font.getData().setScale(1.8f);
-        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
-        font.draw(spriteBatch, "EQUIPO POKÉMON", 250, 560);
+        if (player.estaReordenandoEquipo()) {
+            font.setColor(Color.YELLOW);
+            font.draw(spriteBatch, "REORDENAR EQUIPO", 220, 560);
+        } else {
+            font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
+            font.draw(spriteBatch, "EQUIPO POKÉMON", 250, 560);
+        }
+        font.getData().setScale(1.0f);
 
         // 3. LÍNEA DIVISORIA
         spriteBatch.setColor(new Color(0.5f, 0.5f, 0.6f, 1));
         spriteBatch.draw(whitePixel, 30, 530, 740, 2);
         spriteBatch.setColor(Color.WHITE);
 
-        // 4. POSICIONES FIJAS PARA 6 SLOTS (2x3) - ORGANIZADAS POR FILAS
+        // 4. POSICIONES FIJAS PARA 6 SLOTS (2x3)
         float[][] posiciones = {
-            // Fila 1 (arriba)
             {50, 400},   // Slot 0: Izquierda - Pokémon 1
             {410, 400},  // Slot 1: Derecha - Pokémon 2
-
-            // Fila 2 (medio)
             {50, 270},   // Slot 2: Izquierda - Pokémon 3
             {410, 270},  // Slot 3: Derecha - Pokémon 4
-
-            // Fila 3 (abajo)
             {50, 140},   // Slot 4: Izquierda - Pokémon 5
             {410, 140}   // Slot 5: Derecha - Pokémon 6
         };
 
-        // Tamaño fijo de cada slot
         float slotAncho = 340;
         float slotAlto = 100;
 
@@ -1154,18 +1209,51 @@ public class GameScreen implements Screen {
             float x = posiciones[i][0];
             float y = posiciones[i][1];
 
-            // Fondo del slot
-            if (i == player.getPokemonTeamSelection()) {
-                // Seleccionado - azul
-                spriteBatch.setColor(new Color(0.4f, 0.5f, 0.9f, 0.9f));
-            } else {
-                // No seleccionado - gris claro
-                spriteBatch.setColor(new Color(0.2f, 0.2f, 0.25f, 0.9f));
-            }
-            spriteBatch.draw(whitePixel, x, y, slotAncho, slotAlto);
-            spriteBatch.setColor(Color.WHITE);
+            // ===== EFECTO ESPECIAL PARA EL QUE ARRANCA (POSICIÓN 0) =====
+            if (i == 0 && i < equipo.size()) {
+                // Fondo amarillo suave para el que arranca
+                spriteBatch.setColor(new Color(0.3f, 0.3f, 0.15f, 0.8f));
+                spriteBatch.draw(whitePixel, x, y, slotAncho, slotAlto);
 
-            // Borde del slot
+                // Borde exterior amarillo brillante (3px)
+                spriteBatch.setColor(new Color(1.0f, 1.0f, 0.5f, 1));
+                spriteBatch.draw(whitePixel, x - 1, y - 1, slotAncho + 2, 3); // Superior
+                spriteBatch.draw(whitePixel, x - 1, y + slotAlto - 2, slotAncho + 2, 3); // Inferior
+                spriteBatch.draw(whitePixel, x - 1, y - 1, 3, slotAlto + 2); // Izquierdo
+                spriteBatch.draw(whitePixel, x + slotAncho - 2, y - 1, 3, slotAlto + 2); // Derecho
+
+                // Borde interior dorado (1px)
+                spriteBatch.setColor(new Color(1.0f, 0.9f, 0.3f, 1));
+                spriteBatch.draw(whitePixel, x + 3, y + 3, slotAncho - 6, 1); // Superior
+                spriteBatch.draw(whitePixel, x + 3, y + slotAlto - 4, slotAncho - 6, 1); // Inferior
+                spriteBatch.draw(whitePixel, x + 3, y + 3, 1, slotAlto - 6); // Izquierdo
+                spriteBatch.draw(whitePixel, x + slotAncho - 4, y + 3, 1, slotAlto - 6); // Derecho
+
+                // Pequeña estrella en esquina superior izquierda
+                font.getData().setScale(1.0f);
+                font.setColor(Color.YELLOW);
+                font.draw(spriteBatch, "★", x + 5, y + slotAlto - 15);
+                font.getData().setScale(1.0f);
+            }
+            // ===== SLOTS NORMALES =====
+            else {
+                // Fondo del slot
+                if (i == player.getPokemonTeamSelection()) {
+                    if (player.estaReordenandoEquipo()) {
+                        spriteBatch.setColor(new Color(0.9f, 0.7f, 0.1f, 0.9f));
+                    } else {
+                        spriteBatch.setColor(new Color(0.4f, 0.5f, 0.9f, 0.9f));
+                    }
+                } else if (player.estaReordenandoEquipo() && i == player.getPokemonParaMover()) {
+                    spriteBatch.setColor(new Color(0.1f, 0.7f, 0.1f, 0.9f));
+                } else {
+                    spriteBatch.setColor(new Color(0.2f, 0.2f, 0.25f, 0.9f));
+                }
+                spriteBatch.draw(whitePixel, x, y, slotAncho, slotAlto);
+                spriteBatch.setColor(Color.WHITE);
+            }
+
+            // Borde normal para todos los slots
             spriteBatch.setColor(new Color(0.8f, 0.8f, 0.85f, 1));
             spriteBatch.draw(whitePixel, x, y, slotAncho, 2); // Superior
             spriteBatch.draw(whitePixel, x, y + slotAlto, slotAncho, 2); // Inferior
@@ -1177,7 +1265,7 @@ public class GameScreen implements Screen {
             if (i < equipo.size()) {
                 PokemonJugador p = equipo.get(i);
 
-                // SPRITE DEL POKÉMON (NUEVO)
+                // SPRITE DEL POKÉMON (sin efectos extras)
                 float spriteX = x + 10;
                 float spriteY = y + 10;
                 float spriteWidth = 80;
@@ -1186,33 +1274,31 @@ public class GameScreen implements Screen {
                 if (p.getSprite() != null) {
                     spriteBatch.draw(p.getSprite(), spriteX, spriteY, spriteWidth, spriteHeight);
                 } else {
-                    // Placeholder si no hay sprite
                     spriteBatch.setColor(getColorPorTipo(p.getTipoPrimario()));
                     spriteBatch.draw(whitePixel, spriteX, spriteY, spriteWidth, spriteHeight);
                     spriteBatch.setColor(Color.WHITE);
                 }
 
-                // Nombre (ajustado si es muy largo) - movido a la derecha del sprite
+                // Nombre
                 font.getData().setScale(1.2f);
                 if (i == player.getPokemonTeamSelection()) {
-                    font.setColor(new Color(0.0f, 0.2f, 0.6f, 1)); // Azul oscuro
+                    font.setColor(new Color(0.0f, 0.2f, 0.6f, 1));
                 } else {
-                    font.setColor(new Color(0.2f, 0.2f, 0.4f, 1)); // Gris azulado
+                    font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
                 }
 
                 String nombre = p.getApodo();
                 if (nombre.length() > 8) {
                     nombre = nombre.substring(0, 8) + "...";
                 }
-                // Posición ajustada por el sprite
                 float nombreX = x + 100;
                 font.draw(spriteBatch, nombre, nombreX, y + 80);
 
-                // Nivel (derecha)
+                // Nivel
                 font.getData().setScale(1.0f);
                 font.draw(spriteBatch, "Nv. " + p.getNivel(), x + slotAncho - 70, y + 80);
 
-                // Barra de PS - ajustada por el sprite
+                // Barra de PS
                 float porcentajePS = (float) p.getPsActual() / p.getPsMaximos();
                 float barraAncho = 220;
                 float barraY = y + 55;
@@ -1231,7 +1317,7 @@ public class GameScreen implements Screen {
                 }
                 spriteBatch.draw(whitePixel, x + 100, barraY, barraAncho * porcentajePS, 10);
 
-                // Texto PS (debajo de la barra)
+                // Texto PS
                 spriteBatch.setColor(Color.WHITE);
                 font.getData().setScale(0.9f);
                 font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
@@ -1257,7 +1343,9 @@ public class GameScreen implements Screen {
         // 7. INSTRUCCIONES
         font.getData().setScale(0.9f);
         font.setColor(new Color(0.4f, 0.4f, 0.6f, 1));
-        String instrucciones = "↑↓←→: Navegar  Enter: Seleccionar  ESC: Volver";
+        String instrucciones = player.estaReordenandoEquipo() ?
+            "Selecciona posición destino - Enter: Mover - M/ESC: Cancelar" :
+            "↑↓←→: Navegar  Enter: Detalles  M: Reordenar  ESC: Volver";
         font.draw(spriteBatch, instrucciones, 250, 50);
 
         // 8. RESTAURAR
@@ -1265,9 +1353,7 @@ public class GameScreen implements Screen {
         font.setColor(Color.WHITE);
     }
 
-    // ===============================
-// VISTA DE DETALLE INDIVIDUAL
-// ===============================
+    /** metodo para dibujar los detalles individuales de cada pokemon*/
     private void dibujarDetallePokemon(int screenWidth, int screenHeight) {
         PokemonJugador p = player.getPokemonSeleccionado();
         if (p == null) return;
@@ -1452,9 +1538,7 @@ public class GameScreen implements Screen {
         font.setColor(Color.WHITE);
     }
 
-    // ===============================
-// CONTENIDOS DE LAS PESTAÑAS
-// ===============================
+    /** metodo para dibujar las stats de cada pokemon*/
     private void dibujarEstadisticasPokemon(PokemonJugador p, float x, float y, float ancho) {
         // MÁRGEN SUPERIOR
         y -= 15; // 15px de margen desde el borde superior del contenedor
@@ -1575,6 +1659,7 @@ public class GameScreen implements Screen {
         font.getData().setScale(1.0f);
     }
 
+    /** metodo para dibujar los movimientos de cada pokemon*/
     private void dibujarMovimientosPokemon(PokemonJugador p, float x, float y, float ancho) {
         List<Movimiento> movimientos = p.getMovimientos();
 
@@ -1623,15 +1708,11 @@ public class GameScreen implements Screen {
             font.draw(spriteBatch, "PP: " + pp, x + ancho - 80, y); // 30px más a la derecha
             font.setColor(Color.BLACK); // Restaurar color
 
-            // ELIMINADO: Código de la barra de PP
-            // float ppPorcentaje = (float)m.getPpActual() / m.getPpMax();
-            // float ppAncho = 60;
-            // ... resto del código de la barra ...
-
             y -= 40;
         }
     }
 
+    /** metodo para dibujar la naturaleza de cada pokemon*/
     private void dibujarNaturalezaPokemon(PokemonJugador p, float x, float y, float ancho) {
         // Por ahora, naturaleza placeholder
         font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
@@ -1678,6 +1759,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /** metodo para dibujar donde fue encontrado cada pokemon*/
     private void dibujarEncontradoPokemon(PokemonJugador p, float x, float y, float ancho) {
         font.setColor(new Color(0.2f, 0.2f, 0.4f, 1));
 
@@ -1725,7 +1807,7 @@ public class GameScreen implements Screen {
         font.getData().setScale(1.0f);
     }
 
-    // Método auxiliar para colores de tipo
+    /** Método auxiliar para colores de tipo*/
     private Color getColorPorTipo(Tipo tipo) {
         switch (tipo) {
             case FUEGO:
@@ -1743,6 +1825,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /** metodo para dibujar las instrucciones de cada item*/
     private void dibujarSeleccionPokemonParaItem(int screenWidth, int screenHeight) {
         // Usar el mismo dibujo del equipo pero con instrucciones diferentes
         dibujarEquipoPokemon(screenWidth, screenHeight);
@@ -1778,6 +1861,7 @@ public class GameScreen implements Screen {
 
     }
 
+    /** metodo para dibujar el menu de crafteo*/
     private void dibujarCrafteo(int screenWidth, int screenHeight) {
         font.getData().setScale(2.0f);
         String titulo = "SISTEMA DE CRAFTEO";
@@ -1970,13 +2054,12 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Pokédex (placeholder)
-    // Pokédex - REEMPLAZAR COMPLETAMENTE
+    /** metodo para ir a al pantalla de la pokedex*/
     private void dibujarPokedex(int screenWidth, int screenHeight) {
         pokedexScreen.dibujar(spriteBatch, screenWidth, screenHeight);
     }
 
-    // Guardar (placeholder)
+    /** metodo para dibujar el sistema de guardado*/
     private void dibujarGuardar(int screenWidth, int screenHeight) {
         // Título
         font.getData().setScale(2.0f);
@@ -2031,8 +2114,7 @@ public class GameScreen implements Screen {
         font.getData().setScale(1.0f);
     }
 
-    // Opciones (placeholder)
-    // Menú de Opciones - ARREGLADO
+    /** metodo para dibujar las instrucciones*/
     private void dibujarOpciones(int screenWidth, int screenHeight) {
         // Título
         font.getData().setScale(2.0f);
@@ -2095,7 +2177,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Instrucciones del menú
+    /** metodo para dibujar las Instrucciones del menú*/
     private void dibujarInstrucciones(int screenWidth, int screenHeight) {
         font.getData().setScale(0.9f);
         String instrucciones = "";
@@ -2126,7 +2208,7 @@ public class GameScreen implements Screen {
         font.getData().setScale(1.0f);
     }
 
-    // HUD durante el juego
+    /** metodo para dibujar HUD durante el juego*/
     private void dibujarHUD() {
         spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
@@ -2188,6 +2270,7 @@ public class GameScreen implements Screen {
         // ❌ NO hay combateActivo que disponer
     }
 
+    /** metodo para obtener nombre del mapa actual*/
     private String obtenerNombreMapaActual() {
         if (currentMapFile == null) return "Ubicación desconocida";
 
@@ -2213,6 +2296,7 @@ public class GameScreen implements Screen {
         return nombreFormateado.toString().trim();
     }
 
+    /** metodo para obtener el los encuentros por el nombre del mapa*/
     private String obtenerNombreMapaParaEncuentros() {
         if (currentMapFile == null) return "mapa_centro";
 
@@ -2226,6 +2310,7 @@ public class GameScreen implements Screen {
         return nombreArchivo.toLowerCase();
     }
 
+    /** metodo para iniciar combate */
     public void iniciarCombate(PokemonSalvaje pokemonSalvaje) {
 
         // Detener música del mundo abierto
@@ -2236,17 +2321,23 @@ public class GameScreen implements Screen {
         // Restablecer cooldown de encuentros
         encountersManager.resetEncounterCooldown();
 
-        // Crear combate con el Pokémon actual del jugador
-        Pokemon pokemonJugador = player.getEntrenador().getPokemonActual();
+        // Obtener el Pokémon que arranca (SIEMPRE el primero del equipo)
+        Pokemon pokemonJugador = player.getEntrenador().getPokemonArranque();
+
+        // Si no hay Pokémon en la primera posición, buscar cualquier Pokémon no debilitado
         if (pokemonJugador == null || pokemonJugador.estaDebilitado()) {
             // Buscar primer Pokémon no debilitado
             for (PokemonJugador p : player.getEntrenador().getEquipo()) {
                 if (!p.estaDebilitado()) {
                     pokemonJugador = p;
+                    // También actualizar el Pokémon actual del entrenador
                     player.getEntrenador().setPokemonActual(p);
                     break;
                 }
             }
+        } else {
+            // Asegurar que el Pokémon actual sea el que arranca
+            player.getEntrenador().setPokemonActual(pokemonJugador);
         }
 
         // Si no hay Pokémon disponibles, no se puede combatir
@@ -2274,7 +2365,7 @@ public class GameScreen implements Screen {
         game.setScreen(new CombateScreen(game, this, combate, player));
     }
 
-    // Este método se llama desde CombateScreen para reanudar el juego
+    /** metodo para reaundar juego despues de combate */
     public void reanudarDespuesCombate() {
         // Restaurar música
         if (game.musics != null) {
@@ -2291,6 +2382,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /** metodo para validar inventario*/
     private void validarLimiteInventario() {
         Inventario inv = player.getInventario();
         List<Ranura> itemsColumna = obtenerItemsPorColumna(player.getInventoryColumna(), inv);
@@ -2300,6 +2392,7 @@ public class GameScreen implements Screen {
         }
     }
 
+    /** metodo para dibujar las columnas*/
     private void dibujarColumnaConSelector(SpriteBatch batch, String titulo,
                                            List<Ranura> items, float x, float y,
                                            float espacio, int indiceSeleccionado) {
@@ -2332,7 +2425,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    // Método auxiliar para obtener items por columna
+    /** Método auxiliar para obtener items por columna*/
     private List<Ranura> obtenerItemsPorColumna(int columna, Inventario inv) {
         List<Ranura> resultado = new ArrayList<>();
 
@@ -2361,6 +2454,7 @@ public class GameScreen implements Screen {
         return resultado;
     }
 
+    /** metodo para calcular nivel del equipo*/
     private int calcularNivelPromedioEquipo() {
         List<PokemonJugador> equipo = player.getEntrenador().getEquipo();
         if (equipo.isEmpty()) return 5;

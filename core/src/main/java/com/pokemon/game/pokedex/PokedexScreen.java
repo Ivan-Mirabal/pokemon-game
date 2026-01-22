@@ -12,6 +12,11 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Representa la pantalla de la Pokédex que muestra las entradas registradas.
+ * Gestiona la renderización de la lista de Pokémon y la vista detallada de cada especie.
+ * Incluye sistema de caché para sprites y manejo eficiente de memoria.
+ */
 public class PokedexScreen {
     private Player player;
     private PokedexManager pokedex;
@@ -42,6 +47,10 @@ public class PokedexScreen {
     // Para calcular anchos de texto
     private GlyphLayout layout;
 
+    /**
+     * Crea una nueva pantalla de Pokédex asociada al jugador especificado.
+     * Inicializa los recursos gráficos necesarios y el sistema de caché de sprites.
+     */
     public PokedexScreen(Player player) {
         this.player = player;
         this.pokedex = player.getEntrenador().getPokedex();
@@ -62,6 +71,9 @@ public class PokedexScreen {
         };
     }
 
+    /**
+     * Crea una textura de un píxel blanco para dibujar formas simples.
+     */
     private Texture crearTexturaBlanca() {
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1,
             com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
@@ -72,6 +84,10 @@ public class PokedexScreen {
         return texture;
     }
 
+    /**
+     * Dibuja la pantalla completa de la Pokédex.
+     * Alterna entre la vista de lista y la vista detallada según la selección del jugador.
+     */
     public void dibujar(SpriteBatch batch, int screenWidth, int screenHeight) {
         String especieSeleccionada = player.getPokedexSelectedSpecies();
 
@@ -82,6 +98,10 @@ public class PokedexScreen {
         }
     }
 
+    /**
+     * Renderiza la vista de lista de la Pokédex con todas las especies registradas.
+     * Muestra hasta 6 entradas por página con sprites, nombres y barras de progreso.
+     */
     private void dibujarListaPokedex(SpriteBatch batch, int screenWidth, int screenHeight) {
         List<PokedexEntry> entradas = pokedex.getEntradasOrdenadas();
         int pagina = player.getPokedexPage();
@@ -240,6 +260,10 @@ public class PokedexScreen {
         font.setColor(Color.WHITE);
     }
 
+    /**
+     * Dibuja una barra de progreso que representa el nivel de investigación de una entrada.
+     * Cambia de color según el porcentaje completado.
+     */
     private void dibujarBarraProgreso(SpriteBatch batch, PokedexEntry entrada,
                                       float x, float y) {
         float progreso = entrada.getProgresoInvestigacion();
@@ -273,9 +297,12 @@ public class PokedexScreen {
             y + PROGRESS_BAR_HEIGHT/2 + 4);
     }
 
+    /**
+     * Renderiza la vista detallada de una especie específica de Pokémon.
+     * Muestra sprite grande, estadísticas detalladas e historial de encuentros.
+     */
     private void dibujarDetallePokedex(SpriteBatch batch, int screenWidth, int screenHeight,
                                        String especie) {
-        // [Mantener el código existente del detalle, pero puedes mejorarlo también]
         PokedexEntry entrada = pokedex.getEntrada(especie);
         if (entrada == null) return;
 
@@ -416,7 +443,8 @@ public class PokedexScreen {
     }
 
     /**
-     * Carga sprite específico para Pokédex (40x40)
+     * Carga un sprite de tamaño 40x40 específico para la vista de lista de la Pokédex.
+     * Utiliza caché para mejorar el rendimiento y evitar cargas repetidas.
      */
     private Texture cargarSpritePokedex(String especie) {
         String cacheKey = especie.toLowerCase() + "_pokedex";
@@ -447,7 +475,8 @@ public class PokedexScreen {
     }
 
     /**
-     * Carga sprite para vista detalle (front/back)
+     * Carga un sprite para la vista detallada del Pokémon (frontal o trasero).
+     * Los sprites se almacenan en caché para acceso rápido en futuras solicitudes.
      */
     private Texture cargarSpritePokemon(String especie, String tipo) {
         String cacheKey = especie.toLowerCase() + "_" + tipo;
@@ -467,6 +496,10 @@ public class PokedexScreen {
         }
     }
 
+    /**
+     * Libera todos los recursos gráficos utilizados por esta pantalla.
+     * Debe llamarse cuando la pantalla ya no se vaya a usar para evitar fugas de memoria.
+     */
     public void dispose() {
         if (whitePixel != null) {
             whitePixel.dispose();

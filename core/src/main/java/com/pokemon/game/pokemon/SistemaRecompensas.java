@@ -1,6 +1,5 @@
 package com.pokemon.game.pokemon;
 
-import com.pokemon.game.item.Recurso;
 import java.util.Random;
 
 public class SistemaRecompensas {

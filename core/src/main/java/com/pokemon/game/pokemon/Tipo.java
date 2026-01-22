@@ -1,5 +1,9 @@
 package com.pokemon.game.pokemon;
 
+/**
+ * Representa los tipos elementales de Pokémon y sus relaciones de efectividad en combate.
+ * Cada tipo tiene ventajas y desventajas contra otros tipos, afectando el daño de los movimientos.
+ */
 public enum Tipo {
     NORMAL,
     FUEGO,
@@ -20,8 +24,13 @@ public enum Tipo {
     HADA,
     SINIESTRO;
 
-    // Tabla de efectividad simplificada (sólo algunos tipos para ejemplo)
-    // 2.0 = súper efectivo, 0.5 = no muy efectivo, 0.0 = no afecta
+    /**
+     * Calcula el multiplicador de daño de este tipo contra el tipo defensor.
+     * La efectividad se basa en las fortalezas y debilidades tradicionales de Pokémon.
+     *
+     * @param defensor el tipo del Pokémon que recibe el ataque
+     * @return 2.0 si es súper efectivo, 0.5 si no es muy efectivo, 0.0 si no afecta, 1.0 si es normal
+     */
     public double getMultiplicadorContra(Tipo defensor) {
         // Fuego
         if (this == FUEGO) {

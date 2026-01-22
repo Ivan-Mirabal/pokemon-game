@@ -79,6 +79,9 @@ public class Player {
     private int pokemonTeamSelection = 0;
     private int pokemonDetailTab = 0; // 0: Estadísticas, 1: Movimientos, 2: Naturaleza, 3: Encontrado
 
+    private boolean reordenandoEquipo = false;
+    private int pokemonParaMover = -1;
+
     private int inventarioColumna = 0; // 0: Recursos, 1: Pociones, 2: Poké Balls
     private int inventarioIndice = 0;  // Índice dentro de la columna
 
@@ -276,12 +279,8 @@ public class Player {
 
     public void setMenuState(MenuState state) {
         this.menuState = state;
-        this.menuSelection = 0; // Resetear selección al cambiar estado
+        this.menuSelection = 0;
 
-        // Ya NO usamos inSubMenu - lo eliminamos
-        // this.inSubMenu = (state != MenuState.MAIN && state != MenuState.NONE);
-
-        // Reset adicional para ciertos estados
         switch (state) {
             case INVENTORY:
                 cancelarUsoItem();
@@ -290,18 +289,25 @@ public class Player {
                 inventarioIndice = 0;
                 break;
             case POKEDEX:
-                pokedexSelectedSpecies = null; // Resetear especie seleccionada
+                pokedexSelectedSpecies = null;
                 pokedexSelection = 0;
                 pokedexPage = 0;
                 break;
             case POKEMON_TEAM:
-                pokemonTeamSelection = 0; // Empezar en primer Pokémon
+                pokemonTeamSelection = 0;
+                cancelarReordenamiento();
                 break;
             case CRAFTING:
-                seleccionCrafteo = 0; // Resetear selección de crafteo
+                seleccionCrafteo = 0;
                 break;
             case OPTIONS:
-                menuSelection = 0; // Empezar en primera opción
+                menuSelection = 0;
+                break;
+            case NONE:
+                // Al salir del menú, asegurar que el Pokémon actual esté correcto
+                if (getEntrenador() != null && !getEntrenador().getEquipo().isEmpty()) {
+                    getEntrenador().actualizarPokemonActual();
+                }
                 break;
         }
     }
@@ -695,6 +701,77 @@ public class Player {
             }
         }
     }
+
+    public void iniciarReordenamiento() {
+        List<PokemonJugador> equipo = getEntrenador().getEquipo();
+        if (equipo.isEmpty()) return;
+
+        if (pokemonTeamSelection >= equipo.size()) {
+            pokemonTeamSelection = 0;
+        }
+
+        reordenandoEquipo = true;
+        pokemonParaMover = pokemonTeamSelection;
+
+        System.out.println("Iniciando reordenamiento - Pokémon seleccionado: " +
+            equipo.get(pokemonParaMover).getApodo() +
+            " en posición " + pokemonParaMover);
+    }
+
+    public void cancelarReordenamiento() {
+        reordenandoEquipo = false;
+        pokemonParaMover = -1;
+    }
+
+    public void finalizarReordenamiento() {
+        reordenandoEquipo = false;
+        pokemonParaMover = -1;
+    }
+
+    public boolean estaReordenandoEquipo() {
+        return reordenandoEquipo;
+    }
+
+    public int getPokemonParaMover() {
+        return pokemonParaMover;
+    }
+
+    public void moverPokemonAPosicion(int nuevaPosicion) {
+        if (pokemonParaMover < 0 || nuevaPosicion < 0 ||
+            pokemonParaMover == nuevaPosicion) {
+            return;
+        }
+
+        List<PokemonJugador> equipo = getEntrenador().getEquipo();
+
+        if (pokemonParaMover >= equipo.size() || nuevaPosicion >= equipo.size()) {
+            return;
+        }
+
+        // Guardar referencia al Pokémon que se está moviendo
+        PokemonJugador pokemonAMover = equipo.get(pokemonParaMover);
+
+        // Intercambiar
+        equipo.set(pokemonParaMover, equipo.get(nuevaPosicion));
+        equipo.set(nuevaPosicion, pokemonAMover);
+
+        // Actualizar selección
+        pokemonTeamSelection = nuevaPosicion;
+
+        // ¡IMPORTANTE! Actualizar el Pokémon actual del entrenador
+        // Si movemos un Pokémon a la posición 0, ese debería ser el que arranca
+        if (nuevaPosicion == 0 || pokemonParaMover == 0) {
+            getEntrenador().actualizarPokemonActual();
+        }
+
+        finalizarReordenamiento();
+
+        System.out.println("Pokémon movido de posición " + pokemonParaMover + " a " + nuevaPosicion);
+        System.out.println("Pokémon que arranca ahora: " +
+            (getEntrenador().getEquipo().isEmpty() ? "ninguno" :
+                getEntrenador().getEquipo().get(0).getApodo()));
+    }
+
 
     // Para cambiar pestañas en vista detalle
     public void nextPokemonDetailTab() {
