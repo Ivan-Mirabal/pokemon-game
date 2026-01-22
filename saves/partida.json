@@ -1,6 +1,22 @@
 {
 "pokedex": {
 	"registros": {
+		"Pikachu": {
+			"class": "com.pokemon.game.pokedex.PokedexEntry",
+			"especie": "Pikachu",
+			"visto": true,
+			"vecesVisto": 1,
+			"primerAvistamientoUbicacion": "Mapa Centro",
+			"primerAvistamientoFecha": "22/01/2026 18:58"
+		},
+		"Machoke": {
+			"class": "com.pokemon.game.pokedex.PokedexEntry",
+			"especie": "Machoke",
+			"visto": true,
+			"vecesVisto": 2,
+			"primerAvistamientoUbicacion": "Mapa Norte",
+			"primerAvistamientoFecha": "22/01/2026 19:02"
+		},
 		"Charmander": {
 			"class": "com.pokemon.game.pokedex.PokedexEntry",
 			"especie": "Charmander",
@@ -9,9 +25,9 @@
 			"vecesVisto": 1,
 			"vecesCapturado": 1,
 			"primerAvistamientoUbicacion": "Regalo Inicial",
-			"primerAvistamientoFecha": "22/01/2026 09:15",
+			"primerAvistamientoFecha": "22/01/2026 18:50",
 			"primeraCapturaUbicacion": "Regalo Inicial",
-			"primeraCapturaFecha": "22/01/2026 09:15"
+			"primeraCapturaFecha": "22/01/2026 18:50"
 		}
 	}
 },
@@ -48,7 +64,7 @@
 	},
 	{
 		"nombreItem": "Baya",
-		"cantidad": 3
+		"cantidad": 4
 	},
 	{
 		"nombreItem": "Metal",

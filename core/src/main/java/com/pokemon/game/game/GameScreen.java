@@ -672,7 +672,6 @@ public class GameScreen implements Screen {
             }
 
             // Manejo para POKEMON_TEAM (existente)
-            // Manejo para POKEMON_TEAM (existente)
             if (player.getMenuState() == MenuState.POKEMON_TEAM) {
                 // Si está reordenando
                 if (player.estaReordenandoEquipo()) {
@@ -842,6 +841,13 @@ public class GameScreen implements Screen {
                     player.setMenuState(MenuState.INVENTORY);
                 }
             }
+            if (player.getMenuState() == MenuState.OPTIONS) {
+                // Solo permitir salir con ESC o B
+                if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Keys.B)) {
+                    player.setMenuState(MenuState.MAIN);
+                }
+                return;
+            }
         }
     }
 
@@ -924,7 +930,7 @@ public class GameScreen implements Screen {
                 dibujarGuardar(screenWidth, screenHeight);
                 break;
             case OPTIONS:
-                dibujarOpciones(screenWidth, screenHeight);
+                dibujarTutorial(screenWidth, screenHeight); // Cambiado aquí
                 break;
         }
 
@@ -956,7 +962,7 @@ public class GameScreen implements Screen {
             "Inventario",
             "Crafteo",
             "Guardar partida",
-            "Opciones"
+            "Tutorial"
         };
 
         float startX = screenWidth / 2 - 100;
@@ -2114,67 +2120,58 @@ public class GameScreen implements Screen {
         font.getData().setScale(1.0f);
     }
 
-    /** metodo para dibujar las instrucciones*/
-    private void dibujarOpciones(int screenWidth, int screenHeight) {
+    /** metodo para dibujar el Tutorial */
+    private void dibujarTutorial(int screenWidth, int screenHeight) {
+        // Fondo negro semi-transparente para mejor legibilidad
+        spriteBatch.setColor(0, 0, 0, 0.85f);
+        spriteBatch.draw(whitePixel, 0, 0, screenWidth, screenHeight);
+        spriteBatch.setColor(Color.WHITE);
+
         // Título
         font.getData().setScale(2.0f);
-        font.draw(spriteBatch, "OPCIONES", screenWidth / 2 - 70, screenHeight - 100);
+        font.setColor(Color.YELLOW);
+        font.draw(spriteBatch, "Tutorial", screenWidth / 2 - 70, screenHeight - 20);
         font.getData().setScale(1.0f);
 
-        // Las 4 opciones funcionan correctamente
-        String[] opciones = {
-            "Ajustar Volumen",
-            "Pantalla Completa",
-            "Ver Controles",
-            "Ver Créditos"
+        // Texto introductorio
+        font.setColor(new Color(0.9f, 0.9f, 1.0f, 1));
+        font.draw(spriteBatch, "¡Bienvenido a Pokemon Delta Esmeralda!",
+            screenWidth / 2 - 150, screenHeight - 90);
+
+        font.draw(spriteBatch, "El objetivo del juego es capturar todos los pokemones posibles",
+            screenWidth / 2 - 345, screenHeight - 120);
+
+        font.draw(spriteBatch, "Una vez captures a los 5 pokemones podrás luchar contra el jefe final, ¡El Dios Arceus!",
+            screenWidth / 2 - 300, screenHeight - 150);
+
+        font.draw(spriteBatch, "Arceus se encuentra lo más norte del mundo, ¡asegúrate de tener un buen equipo antes de enfrentrarlo!",
+            screenWidth / 2 - 330, screenHeight - 180);
+
+        font.draw(spriteBatch, "Los controles del juego son:",
+            screenWidth / 2 - 330, screenHeight - 210);
+
+        // Lista de controles
+        String[] controles = {
+            "Flechas: Te mueves en el mapa y en los distintos menus.",
+            "Enter: Interactuar con las opciones de algun menu.",
+            "I: Abrir/Cerrar listado de menus.",
+            "ESC: Regresar de algun menu al anterior",
+            "B: Cuando estes viendo las estadisticas de un pokemon podras volver a seleccionar otro.",
+            "Existen distintos materiales que te sirven para crear items utiles, ¡buscalos por el mundo!.",
+            "Para ganar niveles de investigación debes de ganar combates con el pokemon que quieras investigar."
         };
 
-        float startX = screenWidth / 2 - 150;
-        float startY = screenHeight / 2 + 80;
-        float espacio = 50;
-
-        for (int i = 0; i < opciones.length; i++) {
-            // Resaltar la opción seleccionada
-            if (i == player.getMenuSelection()) {
-                // Fondo para la opción seleccionada
-                spriteBatch.setColor(0.2f, 0.2f, 0.5f, 0.8f);
-                spriteBatch.draw(whitePixel, startX - 20, startY - i * espacio - 20, 340, 35);
-                spriteBatch.setColor(Color.WHITE);
-
-                // Texto de la opción seleccionada
-                font.setColor(Color.YELLOW);
-                font.draw(spriteBatch, "➤ " + opciones[i], startX, startY - i * espacio);
-                font.setColor(Color.WHITE);
-            } else {
-                // Texto normal
-                font.draw(spriteBatch, "  " + opciones[i], startX, startY - i * espacio);
-            }
+        font.setColor(new Color(0.8f, 0.8f, 1.0f, 1));
+        for (int i = 0; i < controles.length; i++) {
+            font.draw(spriteBatch, controles[i],
+                screenWidth / 2 - 330, screenHeight - 240 - (30 * i));
         }
 
-        // Información adicional sobre la opción seleccionada
-        float infoY = startY - (opciones.length * espacio) - 40;
-        String info = "";
+        // Mensaje final
+        font.setColor(Color.GREEN);
+        font.draw(spriteBatch, "Eso es todo, ¡Disfruta el juego!",
+            screenWidth / 2 - 100, screenHeight - 450);
 
-        switch (player.getMenuSelection()) {
-            case 0:
-                info = "Ajusta el volumen de efectos y música";
-                break;
-            case 1:
-                info = "Alterna entre ventana y pantalla completa";
-                break;
-            case 2:
-                info = "Muestra los controles del juego";
-                break;
-            case 3:
-                info = "Información sobre los desarrolladores";
-                break;
-        }
-
-        if (!info.isEmpty()) {
-            font.setColor(Color.LIGHT_GRAY);
-            font.draw(spriteBatch, info, screenWidth / 2 - 200, infoY);
-            font.setColor(Color.WHITE);
-        }
     }
 
     /** metodo para dibujar las Instrucciones del menú*/
@@ -2187,13 +2184,16 @@ public class GameScreen implements Screen {
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar | ESC/I: Salir";
                 break;
             case POKEMON_TEAM:
-                instrucciones = "Flechas ↑↓: Navegar Pokémon | ←→: Seleccionar acción | 1-4: Acciones rápidas | Enter: Ejecutar | ESC: Volver";
+                instrucciones = "Flechas ↑↓: Navegar Pokémon | ←→: Seleccionar acción | Enter: Ejecutar | ESC: Volver";
                 break;
             case INVENTORY:
                 instrucciones = "Flechas: Navegar | Enter: Seleccionar item | ESC: Volver";
                 break;
             case CRAFTING:
                 instrucciones = "Flechas ↑↓: Navegar recetas | Enter: Craftear | ESC: Volver al menú principal";
+                break;
+            case OPTIONS: // Añadido para el tutorial
+                instrucciones = "ESC: Volver al menú principal";
                 break;
             default:
                 break;

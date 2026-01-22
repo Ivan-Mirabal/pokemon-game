@@ -22,13 +22,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+/**
+ * Representa al jugador principal en el juego, controlando su movimiento, inventario,
+ * equipo Pokémon, Pokédex y todas las interacciones del menú.
+ * Esta clase gestiona el estado del jugador, incluyendo posición, animaciones,
+ * sistema de menús y gestión de objetos.
+ */
 public class Player {
 
+    /** Posición X del jugador en el mundo. */
     public float x, y;
+    /** Ancho del sprite del jugador. */
     public float width, height;
+    /** Velocidad de movimiento del jugador. */
     public float speed;
+    /** Frame actual de animación que se está mostrando. */
     public TextureRegion currentFrame;
 
+    /** Textura de un píxel blanco utilizada para dibujar elementos de interfaz. */
     private Texture whitePixel;
 
     // Variables de Animación
@@ -38,7 +49,7 @@ public class Player {
     private Texture spriteSheet;
     private TextureRegion[][] frames;
 
-    // Animaciones en array para simplificar
+    /** Array que contiene las animaciones en las 4 direcciones (abajo, arriba, izquierda, derecha). */
     private Animation<TextureRegion>[] animations;
 
     private final int frameCols = 4;
@@ -54,14 +65,15 @@ public class Player {
     private int tileWidth, tileHeight;
     private GameScreen gameScreen;
 
-    // Variables del Inventario
+    /** Inventario del jugador. */
     private Inventario inventario;
 
     private int paginaCrafteo = 0;
     private final int RECETAS_POR_PAGINA = 8;
 
-    // Variables del Menú
+    /** Estado actual del menú. */
     private MenuState menuState;
+    /** Índice de selección actual en el menú. */
     private int menuSelection;
 
     // Variables para selección de inventario
@@ -85,13 +97,26 @@ public class Player {
     private int inventarioColumna = 0; // 0: Recursos, 1: Pociones, 2: Poké Balls
     private int inventarioIndice = 0;  // Índice dentro de la columna
 
+    /** Entrenador que gestiona el equipo Pokémon y la Pokédex. */
     private Entrenador entrenador;
 
     private int pokedexSelection = 0;           // Índice seleccionado en lista
     private String pokedexSelectedSpecies = null; // Especie seleccionada
     private int pokedexPage = 0;                // Paginación
+    /** Número de entradas de Pokédex que se muestran por página. */
     public final int POKEDEX_ENTRIES_PER_PAGE = 6; // 10 por página
 
+    /**
+     * Construye un nuevo jugador con la textura especificada y posición inicial.
+     *
+     * @param texturePath   Ruta del archivo de textura del sprite sheet
+     * @param startX        Posición X inicial
+     * @param startY        Posición Y inicial
+     * @param tileWidth     Ancho de un tile en el mundo
+     * @param tileHeight    Alto de un tile en el mundo
+     * @param gameScreen    Referencia a la pantalla del juego
+     * @param pokemonInicial Pokémon inicial que recibirá el jugador (puede ser null)
+     */
     public Player(String texturePath, float startX, float startY, int tileWidth, int tileHeight, GameScreen gameScreen, PokemonJugador pokemonInicial) {
         this.x = startX;
         this.y = startY;
@@ -157,6 +182,11 @@ public class Player {
 
     }
 
+    /**
+     * Obtiene la textura del píxel blanco utilizada para dibujar primitivas.
+     *
+     * @return Textura de un píxel blanco
+     */
     public Texture getWhitePixel() {
         return whitePixel;
     }
@@ -174,6 +204,11 @@ public class Player {
         }
     }
 
+    /**
+     * Actualiza la lógica del jugador, incluyendo movimiento, colisiones y animaciones.
+     *
+     * @param delta Tiempo transcurrido desde el último frame en segundos
+     */
     public void update(float delta) {
         // Si hay algún menú activo, no mover al jugador
         if (menuState != MenuState.NONE) {
@@ -229,20 +264,43 @@ public class Player {
         }
     }
 
+    /**
+     * Obtiene el entrenador asociado al jugador.
+     *
+     * @return Objeto Entrenador que gestiona el equipo y la Pokédex
+     */
     public Entrenador getEntrenador() {
         return entrenador;
     }
 
     // MÉTODOS DEL INVENTARIO
+
+    /**
+     * Obtiene el inventario del jugador.
+     *
+     * @return Inventario del jugador
+     */
     public Inventario getInventario() {
         return entrenador.getInventario();
     }
 
+    /**
+     * Intenta recolectar un recurso y agregarlo al inventario.
+     *
+     * @param recurso Recurso a recolectar
+     * @return true si se pudo agregar, false si el inventario está lleno
+     */
     public boolean recolectarRecurso(Recurso recurso) {
         return inventario.agregarItem(recurso);
     }
 
-    // CORRECCIÓN DEL BUG DE DOBLE DECREMENTO
+    /**
+     * Usa un ítem del inventario por su nombre.
+     * Corrige el bug de doble decremento llamando al método usar() de Ranura.
+     *
+     * @param nombreItem Nombre del ítem a usar
+     * @return true si se usó correctamente, false si no se pudo usar
+     */
     public boolean usarItem(String nombreItem) {
         Ranura slot = inventario.buscarItem(nombreItem);
         if (slot != null && slot.getCantidad() > 0) {
@@ -256,11 +314,23 @@ public class Player {
         return false;
     }
 
+    /**
+     * Verifica si el jugador tiene al menos una Poké Ball del tipo especificado.
+     *
+     * @param tipoPokeball Nombre del tipo de Poké Ball (ej: "Poké Ball")
+     * @return true si tiene al menos una, false en caso contrario
+     */
     public boolean tienePokeball(String tipoPokeball) {
         Ranura slot = inventario.buscarItem(tipoPokeball);
         return slot != null && slot.getCantidad() > 0;
     }
 
+    /**
+     * Obtiene una Poké Ball del inventario sin consumirla.
+     *
+     * @param tipoPokeball Nombre del tipo de Poké Ball
+     * @return Objeto Pokeball si existe, null si no hay o no es una Poké Ball
+     */
     public Pokeball obtenerPokeball(String tipoPokeball) {
         Ranura slot = inventario.buscarItem(tipoPokeball);
         if (slot != null && slot.getCantidad() > 0) {
@@ -273,10 +343,21 @@ public class Player {
     }
 
     // MÉTODOS DEL MENÚ
+
+    /**
+     * Obtiene el estado actual del menú.
+     *
+     * @return Estado del menú
+     */
     public MenuState getMenuState() {
         return menuState;
     }
 
+    /**
+     * Cambia el estado del menú, reiniciando las selecciones según corresponda.
+     *
+     * @param state Nuevo estado del menú
+     */
     public void setMenuState(MenuState state) {
         this.menuState = state;
         this.menuSelection = 0;
@@ -312,6 +393,10 @@ public class Player {
         }
     }
 
+    /**
+     * Alterna entre abrir y cerrar el menú principal.
+     * Si no hay menú abierto, lo abre; si hay alguno, lo cierra.
+     */
     public void toggleMenu() {
         if (menuState == MenuState.NONE) {
             setMenuState(MenuState.MAIN);
@@ -320,14 +405,27 @@ public class Player {
         }
     }
 
+    /**
+     * Obtiene la selección actual en el menú.
+     *
+     * @return Índice de la opción seleccionada
+     */
     public int getMenuSelection() {
         return menuSelection;
     }
 
+    /**
+     * Establece la selección del menú manualmente.
+     *
+     * @param selection Nueva selección del menú
+     */
     public void setMenuSelection(int selection) {
         this.menuSelection = selection;
     }
 
+    /**
+     * Mueve la selección del menú hacia arriba (circular).
+     */
     public void moveMenuUp() {
         menuSelection--;
         if (menuSelection < 0) {
@@ -335,6 +433,9 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección del menú hacia abajo (circular).
+     */
     public void moveMenuDown() {
         menuSelection++;
         if (menuSelection >= getMaxMenuItems()) {
@@ -342,6 +443,10 @@ public class Player {
         }
     }
 
+    /**
+     * Procesa la selección del ítem actual en el menú.
+     * Depende del estado actual del menú.
+     */
     public void selectMenuItem() {
         switch (menuState) {
             case MAIN:
@@ -351,36 +456,32 @@ public class Player {
                 handleInventorySelection();
                 break;
             case OPTIONS:
-                // ¡ESTO ES LO QUE ESTABA MAL! Ahora funciona:
-                switch (menuSelection) {
-                    case 0: // Volumen
-                        System.out.println("Volumen ajustado");
-                        // Aquí podrías cambiar el volumen real
-                        break;
-                    case 1: // Pantalla
-                        System.out.println("Pantalla cambiada a modo ventana/completa");
-                        // Aquí podrías cambiar entre ventana y pantalla completa
-                        break;
-                    case 2: // Controles
-                        System.out.println("Mostrando controles...");
-                        break;
-                    case 3: // Créditos
-                        System.out.println("Mostrando créditos...");
-                        break;
-                }
+                System.out.println("Mostrando tutorial...");
                 break;
-            // Otros casos se mantienen igual
         }
     }
 
+    /**
+     * Indica si el jugador está seleccionando un Pokémon para usar un ítem.
+     *
+     * @return true si está en modo selección de Pokémon para ítem, false en caso contrario
+     */
     public boolean isSelectingPokemonForItem() {
         return menuState == MenuState.POKEMON_SELECT_FOR_ITEM;
     }
 
+    /**
+     * Obtiene el ítem actualmente seleccionado para usar.
+     *
+     * @return Ítem seleccionado, o null si no hay ninguno
+     */
     public Item getSelectedItem() {
         return selectedItemSlot != null ? selectedItemSlot.getItem() : null;
     }
 
+    /**
+     * Retrocede en la jerarquía de menús o cierra el menú.
+     */
     public void goBack() {
         switch (menuState) {
             case NONE:
@@ -422,7 +523,9 @@ public class Player {
         }
     }
 
-    // En el método handleMainMenuSelection() de Player.java:
+    /**
+     * Maneja la selección en el menú principal, cambiando a submenús correspondientes.
+     */
     private void handleMainMenuSelection() {
         switch (menuSelection) {
             case 0: // Pokémon
@@ -452,6 +555,10 @@ public class Player {
         }
     }
 
+    /**
+     * Maneja la selección en el inventario, diferenciando entre tipos de ítems.
+     * Para pociones y revivir, cambia al estado de selección de Pokémon.
+     */
     private void handleInventorySelection() {
         Inventario inv = getInventario();
 
@@ -504,6 +611,12 @@ public class Player {
         }
     }
 
+    /**
+     * Usa el ítem previamente seleccionado en un Pokémon específico.
+     *
+     * @param pokemon Pokémon objetivo del ítem
+     * @return true si se usó correctamente, false en caso contrario
+     */
     public boolean usarItemEnPokemon(PokemonJugador pokemon) {
         if (selectedItemSlot == null || selectedItemAction != ItemAction.USE_ON_POKEMON) {
             return false;
@@ -570,11 +683,19 @@ public class Player {
         return false;
     }
 
+    /**
+     * Cancela el uso de un ítem previamente seleccionado.
+     */
     public void cancelarUsoItem() {
         selectedItemSlot = null;
         selectedItemAction = ItemAction.NONE;
     }
 
+    /**
+     * Calcula el número máximo de ítems en el menú actual.
+     *
+     * @return Número de ítems en el menú actual
+     */
     private int getMaxMenuItems() {
         switch (menuState) {
             case MAIN:
@@ -593,18 +714,34 @@ public class Player {
         }
     }
 
+    /**
+     * Libera los recursos gráficos utilizados por el jugador.
+     */
     public void dispose() {
         spriteSheet.dispose();
     }
 
+    /**
+     * Obtiene el sistema de crafteo asociado al jugador.
+     *
+     * @return Sistema de crafteo
+     */
     public Crafteo getSistemaCrafteo() {
         return sistemaCrafteo;
     }
 
+    /**
+     * Obtiene la selección actual en el menú de crafteo.
+     *
+     * @return Índice de la receta seleccionada
+     */
     public int getSeleccionCrafteo() {
         return seleccionCrafteo;
     }
 
+    /**
+     * Mueve la selección de crafteo hacia arriba (circular).
+     */
     public void moverSeleccionCrafteoArriba() {
         seleccionCrafteo--;
         if (seleccionCrafteo < 0) {
@@ -612,6 +749,9 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección de crafteo hacia abajo (circular).
+     */
     public void moverSeleccionCrafteoAbajo() {
         seleccionCrafteo++;
         if (seleccionCrafteo >= sistemaCrafteo.getCantidadRecetas()) {
@@ -619,11 +759,20 @@ public class Player {
         }
     }
 
+    /**
+     * Intenta craftear el ítem actualmente seleccionado.
+     *
+     * @return true si se pudo craftear, false en caso contrario
+     */
     public boolean intentarCraftear() {
         return sistemaCrafteo.crearItem(seleccionCrafteo + 1); // +1 porque IDs empiezan en 1
     }
 
-    // Método para seleccionar Pokémon en menú
+    /**
+     * Obtiene el Pokémon actualmente seleccionado en el menú del equipo.
+     *
+     * @return Pokémon seleccionado, o null si el equipo está vacío
+     */
     public PokemonJugador getPokemonSeleccionado() {
         List<PokemonJugador> equipo = getEntrenador().getEquipo();
         if (equipo.isEmpty()) return null;
@@ -636,12 +785,21 @@ public class Player {
         return equipo.get(pokemonTeamSelection);
     }
 
-    // Método auxiliar (privado)
+    /**
+     * Verifica si un índice dado corresponde a un Pokémon en el equipo.
+     *
+     * @param indice Índice a verificar
+     * @return true si hay un Pokémon en esa posición, false si está vacío
+     */
     private boolean slotTienePokemon(int indice) {
         return indice < getEntrenador().getEquipo().size();
     }
 
     // Métodos de navegación mejorados
+
+    /**
+     * Mueve la selección del equipo Pokémon hacia arriba en la misma columna.
+     */
     public void movePokemonTeamUp() {
         int equipoSize = getEntrenador().getEquipo().size();
         if (equipoSize <= 1) return;
@@ -659,6 +817,9 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección del equipo Pokémon hacia abajo en la misma columna.
+     */
     public void movePokemonTeamDown() {
         int equipoSize = getEntrenador().getEquipo().size();
         if (equipoSize <= 1) return;
@@ -676,6 +837,9 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección del equipo Pokémon hacia la izquierda (entre columnas).
+     */
     public void movePokemonTeamLeft() {
         int equipoSize = getEntrenador().getEquipo().size();
         if (equipoSize <= 1) return;
@@ -689,6 +853,9 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección del equipo Pokémon hacia la derecha (entre columnas).
+     */
     public void movePokemonTeamRight() {
         int equipoSize = getEntrenador().getEquipo().size();
         if (equipoSize <= 1) return;
@@ -702,6 +869,9 @@ public class Player {
         }
     }
 
+    /**
+     * Inicia el modo de reordenamiento del equipo Pokémon.
+     */
     public void iniciarReordenamiento() {
         List<PokemonJugador> equipo = getEntrenador().getEquipo();
         if (equipo.isEmpty()) return;
@@ -718,24 +888,45 @@ public class Player {
             " en posición " + pokemonParaMover);
     }
 
+    /**
+     * Cancela el reordenamiento del equipo sin realizar cambios.
+     */
     public void cancelarReordenamiento() {
         reordenandoEquipo = false;
         pokemonParaMover = -1;
     }
 
+    /**
+     * Finaliza el reordenamiento del equipo.
+     */
     public void finalizarReordenamiento() {
         reordenandoEquipo = false;
         pokemonParaMover = -1;
     }
 
+    /**
+     * Verifica si el jugador está en modo de reordenamiento de equipo.
+     *
+     * @return true si está reordenando, false en caso contrario
+     */
     public boolean estaReordenandoEquipo() {
         return reordenandoEquipo;
     }
 
+    /**
+     * Obtiene el índice del Pokémon que se está moviendo durante el reordenamiento.
+     *
+     * @return Índice del Pokémon a mover, o -1 si no hay ninguno
+     */
     public int getPokemonParaMover() {
         return pokemonParaMover;
     }
 
+    /**
+     * Mueve el Pokémon actualmente seleccionado a una nueva posición en el equipo.
+     *
+     * @param nuevaPosicion Nueva posición donde colocar el Pokémon
+     */
     public void moverPokemonAPosicion(int nuevaPosicion) {
         if (pokemonParaMover < 0 || nuevaPosicion < 0 ||
             pokemonParaMover == nuevaPosicion) {
@@ -772,48 +963,107 @@ public class Player {
                 getEntrenador().getEquipo().get(0).getApodo()));
     }
 
-
-    // Para cambiar pestañas en vista detalle
+    /**
+     * Cambia a la siguiente pestaña en la vista de detalle del Pokémon.
+     */
     public void nextPokemonDetailTab() {
         pokemonDetailTab = (pokemonDetailTab + 1) % 4;
     }
 
+    /**
+     * Cambia a la pestaña anterior en la vista de detalle del Pokémon.
+     */
     public void prevPokemonDetailTab() {
         pokemonDetailTab = (pokemonDetailTab - 1 + 4) % 4;
     }
 
-    // Getters
+    /**
+     * Obtiene la selección actual en el menú del equipo Pokémon.
+     *
+     * @return Índice del Pokémon seleccionado
+     */
     public int getPokemonTeamSelection() { return pokemonTeamSelection; }
+
+    /**
+     * Obtiene la pestaña actual en la vista de detalle del Pokémon.
+     *
+     * @return Índice de la pestaña (0: Estadísticas, 1: Movimientos, 2: Naturaleza, 3: Encontrado)
+     */
     public int getPokemonDetailTab() { return pokemonDetailTab; }
+
+    /**
+     * Establece manualmente la selección del equipo Pokémon.
+     *
+     * @param sel Nueva selección
+     */
     public void setPokemonTeamSelection(int sel) { pokemonTeamSelection = sel; }
+
+    /**
+     * Establece manualmente la pestaña de detalle del Pokémon.
+     *
+     * @param tab Nueva pestaña
+     */
     public void setPokemonDetailTab(int tab) { pokemonDetailTab = tab; }
 
     // ===== MÉTODOS PARA CONTROL DE POKÉDEX =====
 
+    /**
+     * Obtiene la selección actual en la Pokédex.
+     *
+     * @return Índice de la entrada seleccionada en la página actual
+     */
     public int getPokedexSelection() {
         return pokedexSelection;
     }
 
+    /**
+     * Establece la selección de la Pokédex.
+     *
+     * @param selection Nueva selección
+     */
     public void setPokedexSelection(int selection) {
         this.pokedexSelection = selection;
     }
 
+    /**
+     * Obtiene la especie del Pokémon actualmente seleccionada en la Pokédex.
+     *
+     * @return Nombre de la especie, o null si no hay ninguna seleccionada
+     */
     public String getPokedexSelectedSpecies() {
         return pokedexSelectedSpecies;
     }
 
+    /**
+     * Establece la especie seleccionada en la Pokédex.
+     *
+     * @param species Nombre de la especie, o null para deseleccionar
+     */
     public void setPokedexSelectedSpecies(String species) {
         this.pokedexSelectedSpecies = species;
     }
 
+    /**
+     * Obtiene la página actual de la Pokédex.
+     *
+     * @return Número de página (comenzando en 0)
+     */
     public int getPokedexPage() {
         return pokedexPage;
     }
 
+    /**
+     * Establece la página actual de la Pokédex.
+     *
+     * @param page Nueva página
+     */
     public void setPokedexPage(int page) {
         this.pokedexPage = page;
     }
 
+    /**
+     * Mueve la selección de la Pokédex hacia arriba en la página actual.
+     */
     public void movePokedexUp() {
         List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
         int inicio = pokedexPage * POKEDEX_ENTRIES_PER_PAGE;
@@ -828,6 +1078,9 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección de la Pokédex hacia abajo en la página actual.
+     */
     public void movePokedexDown() {
         List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
         int inicio = pokedexPage * POKEDEX_ENTRIES_PER_PAGE;
@@ -842,6 +1095,9 @@ public class Player {
         }
     }
 
+    /**
+     * Cambia a la siguiente página de la Pokédex.
+     */
     public void nextPokedexPage() {
         List<PokedexEntry> entradas = getEntrenador().getPokedex().getEntradasOrdenadas();
         int totalPaginas = (int) Math.ceil(entradas.size() / (float) POKEDEX_ENTRIES_PER_PAGE);
@@ -852,6 +1108,9 @@ public class Player {
         }
     }
 
+    /**
+     * Cambia a la página anterior de la Pokédex.
+     */
     public void prevPokedexPage() {
         if (pokedexPage > 0) {
             pokedexPage--;
@@ -859,37 +1118,73 @@ public class Player {
         }
     }
 
+    /**
+     * Mueve la selección del inventario a la columna izquierda.
+     */
     public void moveInventoryLeft() {
         inventarioColumna = (inventarioColumna - 1 + 3) % 3;
         inventarioIndice = 0; // Resetear índice al cambiar de columna
     }
 
+    /**
+     * Mueve la selección del inventario a la columna derecha.
+     */
     public void moveInventoryRight() {
         inventarioColumna = (inventarioColumna + 1) % 3;
         inventarioIndice = 0;
     }
 
+    /**
+     * Mueve la selección del inventario hacia arriba.
+     */
     public void moveInventoryUp() {
         inventarioIndice = Math.max(0, inventarioIndice - 1);
     }
 
+    /**
+     * Mueve la selección del inventario hacia abajo.
+     */
     public void moveInventoryDown() {
         // El límite depende de la columna actual y los items
         inventarioIndice++; // El límite se valida en GameScreen
     }
 
+    /**
+     * Verifica si el jugador se está moviendo actualmente.
+     *
+     * @return true si se está moviendo, false si está quieto
+     */
     public boolean isMoving(){
         return isMoving;
     }
 
+    /**
+     * Obtiene la columna actual del inventario.
+     *
+     * @return Columna actual (0: Recursos, 1: Pociones, 2: Poké Balls)
+     */
     public int getInventoryColumna() { return inventarioColumna; }
-    public int getInventoryIndice() { return inventarioIndice; }
-    public void setInventoryIndice(int indice) { this.inventarioIndice = indice; }
-
-// ============ MÉTODOS PARA SISTEMA DE GUARDADO ============
 
     /**
-     * Extrae los datos actuales del jugador para guardar
+     * Obtiene el índice actual dentro de la columna del inventario.
+     *
+     * @return Índice de selección
+     */
+    public int getInventoryIndice() { return inventarioIndice; }
+
+    /**
+     * Establece el índice de selección dentro de la columna del inventario.
+     *
+     * @param indice Nuevo índice
+     */
+    public void setInventoryIndice(int indice) { this.inventarioIndice = indice; }
+
+    // ============ MÉTODOS PARA SISTEMA DE GUARDADO ============
+
+    /**
+     * Extrae los datos actuales del jugador para guardar en un archivo.
+     *
+     * @return Objeto SaveData con toda la información del jugador
      */
     public SaveData extraerDatosParaGuardar() {
 
@@ -930,7 +1225,9 @@ public class Player {
     }
 
     /**
-     * Carga datos guardados en el jugador actual
+     * Carga datos guardados en el jugador actual.
+     *
+     * @param datos Datos a cargar (si es null, no se realiza ninguna acción)
      */
     public void cargarDatosGuardados(SaveData datos) {
         if (datos == null) {
@@ -987,16 +1284,22 @@ public class Player {
 
     }
 
+    /**
+     * Verifica si el jugador ha encontrado al Pokémon legendario Arceus.
+     *
+     * @return true si Arceus ha sido visto en la Pokédex, false en caso contrario
+     */
     public boolean isLegendaryEncountered() {
         // Verificar si Arceus ya ha sido visto en la Pokédex
         PokedexEntry arceusEntry = this.getEntrenador().getPokedex().getEntrada("Arceus");
         return arceusEntry != null && arceusEntry.isVisto();
     }
 
-// ============ MÉTODOS PRIVADOS AUXILIARES ============
-
     /**
-     * Convierte un PokemonJugador a su versión simple para guardar
+     * Convierte un PokemonJugador a su versión simple para guardar.
+     *
+     * @param pokemon Pokémon a convertir
+     * @return Representación simplificada del Pokémon
      */
     private SaveData.PokemonSimple convertirPokemonASimple(PokemonJugador pokemon) {
         return new SaveData.PokemonSimple(
@@ -1010,7 +1313,10 @@ public class Player {
     }
 
     /**
-     * Recrea un PokemonJugador desde datos simples
+     * Recrea un PokemonJugador desde datos simples guardados.
+     *
+     * @param simple Datos simplificados del Pokémon
+     * @return Pokémon recreado, o null si hubo un error
      */
     private PokemonJugador recrearPokemonDesdeSimple(SaveData.PokemonSimple simple) {
         try {
@@ -1062,10 +1368,10 @@ public class Player {
     }
 
     /**
-     * Crea un ítem por su nombre
-     */
-    /**
-     * Crea un ítem por su nombre (VERSIÓN CORREGIDA)
+     * Crea un ítem por su nombre (VERSIÓN CORREGIDA).
+     *
+     * @param nombreItem Nombre del ítem a crear
+     * @return Objeto Item correspondiente, o null si no se reconoce
      */
     private Item crearItemPorNombre(String nombreItem) {
         if (nombreItem == null || nombreItem.isEmpty()) {
@@ -1094,7 +1400,7 @@ public class Player {
             return new Curacion("Poción Grande", 50);
         }
 
-       else if (nombreItem.equals("Revivir")) {
+        else if (nombreItem.equals("Revivir")) {
             return new Revivir("Revivir", 50);
         }
 
@@ -1120,7 +1426,10 @@ public class Player {
     }
 
     /**
-     * Clona la Pokédex para evitar modificar la original
+     * Clona la Pokédex para evitar modificar la original.
+     *
+     * @param original Pokédex original a clonar
+     * @return Pokédex clonada
      */
     private PokedexManager clonarPokedex(PokedexManager original) {
         // Crear nueva instancia
@@ -1134,7 +1443,9 @@ public class Player {
         }
     }
 
-    // Método para sanear datos de Pokémon antes de guardar
+    /**
+     * Sanea los datos de los Pokémon antes de guardar, asegurando valores coherentes.
+     */
     public void sanearPokemonAntesDeGuardar() {
         if (entrenador == null) return;
 

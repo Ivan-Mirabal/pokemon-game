@@ -82,8 +82,6 @@ public class FabricaPokemon {
         // La carga de movimientos se realiza bajo demanda en getMovimiento()
     }
 
-    // ===== MÉTODOS PÚBLICOS PRINCIPALES =====
-
     /**
      * Crea un Pokémon controlable por el jugador con la especie, nivel y apodo especificados.
      * Asigna automáticamente movimientos apropiados basados en el tipo elemental del Pokémon.
